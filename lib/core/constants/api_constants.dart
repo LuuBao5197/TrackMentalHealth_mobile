@@ -8,4 +8,10 @@ class ApiConstants {
   static const String register = '$baseUrl/auth/register';
   static const String getTests = '$baseUrl/test/';
   static const String getProfile = '$baseUrl/users/profile';
+
+  //chat api
+  static const String getChatSessionByUserId = '$baseUrl/chat/session';
+
+
+
 }
