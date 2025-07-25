@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
+import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
@@ -69,6 +70,7 @@ class _MainScreenState extends State<MainScreen> {
     DiaryScreen(),
     BlogScreen(),
     ProfileScreen(),
+    ChatScreen(),
   ];
 
   void _onTabTapped(int index) {
@@ -92,6 +94,7 @@ class _MainScreenState extends State<MainScreen> {
           NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
           NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
           NavigationRailDestination(icon: Icon(Icons.person), label: Text("Profile")),
+          NavigationRailDestination(icon: Icon(Icons.messenger_outline), label: Text("Chat")),
         ],
       );
     }
@@ -112,6 +115,7 @@ class _MainScreenState extends State<MainScreen> {
         BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
         BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
         BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+        BottomNavigationBarItem(icon: Icon(Icons.messenger_outline_outlined), label: 'Chat'),
       ],
     );
   }
