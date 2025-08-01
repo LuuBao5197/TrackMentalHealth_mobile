@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
-import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
+import 'package:trackmentalhealth/pages/home/HeroPage.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
@@ -64,13 +64,13 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    TestScreen(),
-    DiaryScreen(),
-    BlogScreen(),
-    ProfileScreen(),
-    ChatScreen(),
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    HeroPage(),
+    const TestScreen(),
+    const DiaryScreen(),
+    const BlogScreen(),
+    const ProfileScreen(),
   ];
 
   void _onTabTapped(int index) {
@@ -90,11 +90,11 @@ class _MainScreenState extends State<MainScreen> {
         labelType: NavigationRailLabelType.selected,
         destinations: const [
           NavigationRailDestination(icon: Icon(Icons.home), label: Text("Home")),
+          NavigationRailDestination(icon: Icon(Icons.emoji_emotions), label: Text("Mood")),
           NavigationRailDestination(icon: Icon(Icons.quiz), label: Text("Test")),
           NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
           NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
           NavigationRailDestination(icon: Icon(Icons.person), label: Text("Profile")),
-          NavigationRailDestination(icon: Icon(Icons.messenger_outline), label: Text("Chat")),
         ],
       );
     }
@@ -111,11 +111,11 @@ class _MainScreenState extends State<MainScreen> {
       elevation: 10,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        BottomNavigationBarItem(icon: Icon(Icons.emoji_emotions), label: 'Mood'),
         BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test'),
         BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
         BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
         BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
-        BottomNavigationBarItem(icon: Icon(Icons.messenger_outline_outlined), label: 'Chat'),
       ],
     );
   }
