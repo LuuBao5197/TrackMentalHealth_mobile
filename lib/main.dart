@@ -6,6 +6,9 @@ import 'package:trackmentalhealth/pages/home/HeroPage.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
+import 'package:trackmentalhealth/pages/content/ContentTabScreen.dart';
+
+
 import 'core/constants/app_colors.dart';
 import 'core/constants/theme_provider.dart';
 
@@ -71,6 +74,7 @@ class _MainScreenState extends State<MainScreen> {
     const DiaryScreen(),
     const BlogScreen(),
     const ProfileScreen(),
+    const ContentTabScreen(),
   ];
 
   void _onTabTapped(int index) {
@@ -95,6 +99,8 @@ class _MainScreenState extends State<MainScreen> {
           NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
           NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
           NavigationRailDestination(icon: Icon(Icons.person), label: Text("Profile")),
+          NavigationRailDestination(icon: Icon(Icons.menu_book), label: Text("Content")),
+
         ],
       );
     }
@@ -116,6 +122,8 @@ class _MainScreenState extends State<MainScreen> {
         BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
         BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
         BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+        BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Content'),
+
       ],
     );
   }
