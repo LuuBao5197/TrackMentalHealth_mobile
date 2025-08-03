@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'detail/ExerciseDetailScreen.dart';
+
 class ExerciseScreen extends StatefulWidget {
   const ExerciseScreen({super.key});
 
@@ -50,55 +52,65 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
         : 'http://10.0.2.2:9999/uploads/${ex['photo']}')
         : 'https://via.placeholder.com/400x200.png?text=Exercise';
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: Image.network(
-              imageUrl,
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ExerciseDetailScreen(exerciseId: ex['id']),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ex['mediaType'] ?? 'Unknown',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.teal,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  ex['title'] != null && ex['title'].toString().length > 40
-                      ? '${ex['title'].toString().substring(0, 40)}...'
-                      : ex['title'] ?? 'Untitled',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  ex['instruction'] != null && ex['instruction'].toString().length > 50
-                      ? '${ex['instruction'].toString().substring(0, 50)}...'
-                      : ex['instruction'] ?? '',
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
-                ),
-              ],
+        );
+      },
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Image.network(
+                imageUrl,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    ex['mediaType'] ?? 'Unknown',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    ex['title'] != null && ex['title'].toString().length > 40
+                        ? '${ex['title'].toString().substring(0, 40)}...'
+                        : ex['title'] ?? 'Untitled',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    ex['instruction'] != null && ex['instruction'].toString().length > 50
+                        ? '${ex['instruction'].toString().substring(0, 50)}...'
+                        : ex['instruction'] ?? '',
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

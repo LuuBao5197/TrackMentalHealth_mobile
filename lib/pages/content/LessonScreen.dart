@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'detail/LessonDetailScreen.dart';
 
 class LessonScreen extends StatefulWidget {
   const LessonScreen({super.key});
@@ -73,8 +74,12 @@ class _LessonScreenState extends State<LessonScreen> {
         ),
       );
     } else {
-      print("Go to lesson $lessonId");
-      // Navigate to lesson detail
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LessonDetailScreen(lessonId: lessonId),
+        ),
+      );
     }
   }
 
