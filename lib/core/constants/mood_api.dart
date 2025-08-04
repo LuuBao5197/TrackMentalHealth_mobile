@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String baseUrl = "http://172.16.3.156:9999/api";
+const String baseUrl = "http://192.168.3.7:9999/api";
 
 // 🛡️ Hàm lấy header có token thực từ SharedPreferences
 Future<Map<String, String>> getHeaders() async {
-  const fakeToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhYmNAZ21haWwuY29tIiwidXNlcklkIjoyLCJyb2xlIjoiVVNFUiIsInJvbGVzIjpbIlJPTEVfVVNFUiJdLCJpYXQiOjE3NTM4NTgzMzIsImV4cCI6MTc1Mzg5NDMzMn0.YmNnwVuuL1eqvU6grhHSrZcn06QtcsypTXT81UgjnKw"; // <-- Dán token thật của bạn ở đây
+  const fakeToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbmhAZXhhbXBsZS5jb20iLCJ1c2VySWQiOjksInJvbGUiOiJVU0VSIiwicm9sZXMiOlsiUk9MRV9VU0VSIl0sImlhdCI6MTc1NDAyNTU3OCwiZXhwIjoxNzU0MDYxNTc4fQ.vDSuPi0aCSVuJeI49am0K0k515bNP-YDfOsbbUFQsXs"; // <-- Dán token thật của bạn ở đây
 
   return {
     "Content-Type": "application/json",
