@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../../core/constants/api_constants.dart';
 import 'detail/ExerciseDetailScreen.dart';
+ // 👈 import ApiConstants
 
 class ExerciseScreen extends StatefulWidget {
   const ExerciseScreen({super.key});
@@ -23,12 +25,11 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
 
   Future<void> fetchExercises() async {
     try {
-      final response = await http.get(Uri.parse('http://10.0.2.2:9999/api/exercise/'));
+      final response = await http.get(Uri.parse(ApiConstants.getExercises)); // 👈 dùng URL từ ApiConstants
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         final filtered = data.where((ex) =>
-        ex['status'] == true || ex['status'] == 'true'
-        ).toList();
+        ex['status'] == true || ex['status'] == 'true').toList();
 
         setState(() {
           exercises = filtered;
@@ -49,7 +50,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
     final String imageUrl = (ex['photo'] != null && ex['photo'].toString().isNotEmpty)
         ? (ex['photo'].toString().startsWith('http')
         ? ex['photo']
-        : 'http://10.0.2.2:9999/uploads/${ex['photo']}')
+        : 'http://${ApiConstants.ipLocal}:9999/uploads/${ex['photo']}') // 👈 dùng ipLocal từ ApiConstants
         : 'https://via.placeholder.com/400x200.png?text=Exercise';
 
     return GestureDetector(

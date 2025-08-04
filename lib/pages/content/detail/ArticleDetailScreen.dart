@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../core/constants/api_constants.dart';
+
+
 class ArticleDetailScreen extends StatefulWidget {
   final int articleId;
 
@@ -52,7 +55,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   Future<void> _fetchArticle() async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:9999/api/article/${widget.articleId}'),
+        Uri.parse('${ApiConstants.getArticles}${widget.articleId}'),
       );
       if (response.statusCode == 200) {
         setState(() {
@@ -76,7 +79,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   Future<void> _fetchComments() async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:9999/api/article/${widget.articleId}/comments'),
+        Uri.parse('${ApiConstants.getArticles}${widget.articleId}/comments'),
       );
       if (response.statusCode == 200) {
         setState(() {
@@ -98,7 +101,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       if (uid != null && !newUsernames.containsKey(uid)) {
         try {
           final response = await http.get(
-            Uri.parse('http://10.0.2.2:9999/api/user/$uid'),
+            Uri.parse('${ApiConstants.baseUrl}/user/$uid'),
           );
           if (response.statusCode == 200) {
             final data = json.decode(response.body);
@@ -126,7 +129,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:9999/api/article/${widget.articleId}/comments'),
+        Uri.parse('${ApiConstants.getArticles}${widget.articleId}/comments'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'content': commentContent,
@@ -211,7 +214,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     final imageUrl = (article!['photo'] ?? '').startsWith('http')
         ? article!['photo']
         : article!['photo'] != null && article!['photo'].isNotEmpty
-        ? 'http://10.0.2.2:9999/uploads/${article!['photo']}'
+        ? '${ApiConstants.baseUrl.replaceFirst('/api', '')}/uploads/${article!['photo']}'
         : 'https://via.placeholder.com/300x180';
 
     return Scaffold(
@@ -223,7 +226,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero Section
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -307,8 +309,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             )
                 : GestureDetector(
               onTap: () {
-                // Navigate to login screen
-                Navigator.pushNamed(context, '/login'); // Adjust route as needed
+                Navigator.pushNamed(context, '/login');
               },
               child: const Text(
                 '🔒 Please log in to comment',
