@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
+import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
 import 'package:trackmentalhealth/pages/home/HeroPage.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
@@ -27,7 +28,8 @@ class TrackMentalHealthApp extends StatelessWidget {
     return MaterialApp(
       title: 'Track Mental Health',
       debugShowCheckedModeBanner: false,
-      themeMode: themeProvider.themeMode, // ✅ Tự động theo hệ điều hành
+      themeMode: themeProvider.themeMode,
+      // ✅ Tự động theo hệ điều hành
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: Colors.teal,
@@ -70,6 +72,7 @@ class _MainScreenState extends State<MainScreen> {
     const TestScreen(),
     const DiaryScreen(),
     const BlogScreen(),
+    const ChatScreen(),
     const ProfileScreen(),
   ];
 
@@ -81,7 +84,10 @@ class _MainScreenState extends State<MainScreen> {
 
   /// ✅ Đây là phần bị thiếu lúc trước – hàm hiển thị điều hướng responsive
   Widget _buildNavigation(BuildContext context) {
-    final isWideScreen = MediaQuery.of(context).size.width >= 600;
+    final isWideScreen = MediaQuery
+        .of(context)
+        .size
+        .width >= 600;
 
     if (isWideScreen) {
       return NavigationRail(
@@ -89,12 +95,20 @@ class _MainScreenState extends State<MainScreen> {
         onDestinationSelected: _onTabTapped,
         labelType: NavigationRailLabelType.selected,
         destinations: const [
-          NavigationRailDestination(icon: Icon(Icons.home), label: Text("Home")),
-          NavigationRailDestination(icon: Icon(Icons.emoji_emotions), label: Text("Mood")),
-          NavigationRailDestination(icon: Icon(Icons.quiz), label: Text("Test")),
-          NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
-          NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
-          NavigationRailDestination(icon: Icon(Icons.person), label: Text("Profile")),
+          NavigationRailDestination(
+              icon: Icon(Icons.home), label: Text("Home")),
+          NavigationRailDestination(
+              icon: Icon(Icons.emoji_emotions), label: Text("Mood")),
+          NavigationRailDestination(
+              icon: Icon(Icons.quiz), label: Text("Test")),
+          NavigationRailDestination(
+              icon: Icon(Icons.mood), label: Text("Diary")),
+          NavigationRailDestination(
+              icon: Icon(Icons.article), label: Text("Blog")),
+          NavigationRailDestination(
+              icon: Icon(Icons.messenger_outline_rounded), label: Text("Chat")),
+          NavigationRailDestination(
+              icon: Icon(Icons.person), label: Text("Profile")),
         ],
       );
     }
@@ -106,23 +120,32 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.white,
       selectedItemColor: Colors.teal[700],
       unselectedItemColor: Colors.grey,
-      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+      selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.bold, fontSize: 13),
       unselectedLabelStyle: const TextStyle(fontSize: 12),
       elevation: 10,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.emoji_emotions), label: 'Mood'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.emoji_emotions), label: 'Mood'),
         BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test'),
         BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
-        BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.article_rounded), label: 'Blog'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.messenger_outline_rounded), label: 'Chat'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.person_rounded), label: 'Profile'),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isWideScreen = MediaQuery.of(context).size.width >= 600;
+    final isWideScreen = MediaQuery
+        .of(context)
+        .size
+        .width >= 600;
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
 
@@ -157,7 +180,8 @@ class _MainScreenState extends State<MainScreen> {
           Expanded(child: _screens[_selectedIndex]),
         ],
       ),
-      bottomNavigationBar: isWideScreen ? null : _buildNavigation(context), // dùng BottomNavigationBar nếu là mobile
+      bottomNavigationBar: isWideScreen ? null : _buildNavigation(
+          context), // dùng BottomNavigationBar nếu là mobile
     );
   }
 }

@@ -12,7 +12,7 @@ class ChatDetailScreen extends StatelessWidget {
         elevation: 3,
         shadowColor: Colors.teal.withOpacity(0.3),
         title: Text(
-          'Chi tiết bài viết',
+          'Chat',
           style: TextStyle(
             color: Colors.teal[800],
             fontWeight: FontWeight.w600,
@@ -23,7 +23,7 @@ class ChatDetailScreen extends StatelessWidget {
       body: const Padding(
         padding: EdgeInsets.all(16.0),
         child: Text(
-          'Đây là nội dung chi tiết bài viết.\nBạn có thể đọc thêm thông tin ở đây...',
+          'Xin chao',
           style: TextStyle(fontSize: 16),
         ),
       ),
