@@ -45,6 +45,7 @@ dependencies:
   flutter_chat_ui: ^1.6.9
   flutter_chat_types: ^3.6.1
   uuid: ^4.5.1
+  stomp_dart_client: ^1.0.0
 
 dev_dependencies:
   flutter_test:

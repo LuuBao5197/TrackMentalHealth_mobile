@@ -1,17 +1,21 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
+import 'package:trackmentalhealth/models/ChatMessageGroup.dart';
 
-const String ipLocal = '192.168.1.5';
+import '../../models/ChatMessage.dart';
+
+const String ipLocal = '192.168.1.7';
 const String baseUrl = 'http://${ipLocal}:9999/api';
 
 // ==== Chat ====
-const String chatUrl = '$baseUrl/chat/';
-const String appointmentUrl = '$baseUrl/appointment/';
-const String psyUrl = '$baseUrl/psychologist/';
-const String aiUrl = '$baseUrl/chatai/';
-const String notificationUrl = '$baseUrl/notification/';
-const String chatGroupUrl = '$baseUrl/chatgroup/';
+const String chatUrl = '$baseUrl/chat';
+const String appointmentUrl = '$baseUrl/appointment';
+const String psyUrl = '$baseUrl/psychologist';
+const String aiUrl = '$baseUrl/chatai';
+const String notificationUrl = '$baseUrl/notification';
+const String chatGroupUrl = '$baseUrl/chatgroup';
 const String uploadUrl = '$baseUrl/upload';
 
 // ==================== Upload File ====================
@@ -30,7 +34,7 @@ Future<String> uploadFile(File file) async {
 
 // ==================== Chat Messages ====================
 Future<List<dynamic>> getMessagesBySessionId(int id) async {
-  final res = await http.get(Uri.parse('$chatUrl$id'));
+  final res = await http.get(Uri.parse('$chatUrl/$id'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -47,8 +51,38 @@ Future<bool> hasUnreadMessages(int id) async {
   }
 }
 
+Future<ChatMessage?> getLastestMsg(int sessionId) async {
+  final res = await http.get(Uri.parse('$chatUrl/lastest-message/$sessionId'));
+  if (res.statusCode == 200) {
+    return ChatMessage.fromJson(jsonDecode(res.body));
+  } else if (res.statusCode == 404) {
+    return null; // Chưa có tin nhắn
+  } else {
+
+    throw Exception('Failed to load lastest message');
+  }
+}
+
+Future<ChatMessageGroup?> getLastestMsgGroup(int groupId) async {
+  final res = await http.get(Uri.parse('$chatGroupUrl/lastest-message/$groupId'));
+
+  if (res.statusCode == 200) {
+    final jsonData = jsonDecode(res.body);
+    return ChatMessageGroup.fromJson(jsonData);
+  } else if (res.statusCode == 404) {
+    return null; // Chưa có tin nhắn
+  } else {
+    throw Exception('Failed to load latest message');
+  }
+}
+
+
+
+
 Future<dynamic> initiateChatSession(int senderId, int receiverId) async {
-  final res = await http.post(Uri.parse('$chatUrl/session/initiate/$senderId/$receiverId'));
+  final res = await http.post(
+    Uri.parse('$chatUrl/session/initiate/$senderId/$receiverId'),
+  );
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -56,11 +90,12 @@ Future<dynamic> initiateChatSession(int senderId, int receiverId) async {
   }
 }
 
-Future<List<dynamic>> getChatSessionsByUserId(int id) async {
-  final res = await http.get(Uri.parse('$chatUrl/session/$id'));
+Future<List<dynamic>> getChatSessionsByUserId(int userId) async {
+  final res = await http.get(Uri.parse('$chatUrl/session/$userId'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
+    print('Error ${res.statusCode}: ${res.body}');
     throw Exception('Failed to get chat sessions');
   }
 }
@@ -76,7 +111,7 @@ Future<List<dynamic>> getAppointmentByUserId(int id) async {
 }
 
 Future<dynamic> getAppointmentById(int id) async {
-  final res = await http.get(Uri.parse('$appointmentUrl$id'));
+  final res = await http.get(Uri.parse('${appointmentUrl}/$id'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -95,7 +130,7 @@ Future<List<dynamic>> getAppointmentByPsyId(int psyId) async {
 
 Future<dynamic> saveAppointment(Map<String, dynamic> data) async {
   final res = await http.post(
-    Uri.parse('${appointmentUrl}save'),
+    Uri.parse('${appointmentUrl}/save'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode(data),
   );
@@ -108,7 +143,7 @@ Future<dynamic> saveAppointment(Map<String, dynamic> data) async {
 
 Future<dynamic> updateAppointment(int id, Map<String, dynamic> data) async {
   final res = await http.put(
-    Uri.parse('$appointmentUrl$id'),
+    Uri.parse('${appointmentUrl}/$id'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode(data),
   );
@@ -120,7 +155,7 @@ Future<dynamic> updateAppointment(int id, Map<String, dynamic> data) async {
 }
 
 Future<dynamic> deleteAppointment(int id) async {
-  final res = await http.delete(Uri.parse('$appointmentUrl$id'));
+  final res = await http.delete(Uri.parse('${appointmentUrl}/$id'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -130,7 +165,7 @@ Future<dynamic> deleteAppointment(int id) async {
 
 // ==================== Psychologists ====================
 Future<List<dynamic>> getPsychologists() async {
-  final res = await http.get(Uri.parse(psyUrl));
+  final res = await http.get(Uri.parse('${psyUrl}/'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -139,25 +174,33 @@ Future<List<dynamic>> getPsychologists() async {
 }
 
 // ==================== AI ====================
-Future<dynamic> chatAI(Map<String, dynamic> data) async {
+Future<String> chatAI(Map<String, dynamic> data) async {
   final res = await http.post(
-    Uri.parse('${aiUrl}ask'),
+    Uri.parse('$aiUrl/ask'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode(data),
   );
+
   if (res.statusCode == 200) {
-    return jsonDecode(res.body);
+    return res.body; // Backend trả string thuần
   } else {
-    throw Exception('Failed to chat AI');
+    throw Exception('Failed to chat AI: ${res.statusCode} ${res.body}');
   }
 }
 
 Future<List<dynamic>> getAIHistory(int userId) async {
-  final res = await http.get(Uri.parse('${aiUrl}history/$userId'));
+  final url = '${aiUrl}/history/$userId';
+  debugPrint("Gọi API getAIHistory: $url");
+
+  final res = await http.get(Uri.parse(url));
+
+  debugPrint("Status code: ${res.statusCode}");
+  debugPrint("Response body: ${res.body}");
+
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
-    throw Exception('Failed to fetch AI history');
+    throw Exception('Failed to fetch AI history: ${res.statusCode}');
   }
 }
 
@@ -173,7 +216,7 @@ Future<List<dynamic>> getNotificationsByUserId(int userId) async {
 
 Future<dynamic> saveNotification(Map<String, dynamic> data) async {
   final res = await http.post(
-    Uri.parse('${notificationUrl}save'),
+    Uri.parse('${notificationUrl}/save'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode(data),
   );
@@ -185,7 +228,7 @@ Future<dynamic> saveNotification(Map<String, dynamic> data) async {
 }
 
 Future<dynamic> changeStatusNotification(int id) async {
-  final res = await http.put(Uri.parse('${notificationUrl}changestatus/$id'));
+  final res = await http.put(Uri.parse('${notificationUrl}/changestatus/$id'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -194,7 +237,7 @@ Future<dynamic> changeStatusNotification(int id) async {
 }
 
 Future<dynamic> deleteNotificationById(int id) async {
-  final res = await http.delete(Uri.parse('${notificationUrl}delete/$id'));
+  final res = await http.delete(Uri.parse('${notificationUrl}/delete/$id'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -204,7 +247,7 @@ Future<dynamic> deleteNotificationById(int id) async {
 
 // ==================== Chat Group ====================
 Future<List<dynamic>> getAllChatGroup() async {
-  final res = await http.get(Uri.parse('${chatGroupUrl}findAll'));
+  final res = await http.get(Uri.parse('${chatGroupUrl}/findAll'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -213,7 +256,7 @@ Future<List<dynamic>> getAllChatGroup() async {
 }
 
 Future<List<dynamic>> getChatGroupByCreatorId(int id) async {
-  final res = await http.get(Uri.parse('${chatGroupUrl}createdBy/$id'));
+  final res = await http.get(Uri.parse('${chatGroupUrl}/createdBy/$id'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -231,7 +274,7 @@ Future<dynamic> getChatGroupById(int id) async {
 }
 
 Future<List<dynamic>> getMessagesByGroupId(int id) async {
-  final res = await http.get(Uri.parse('${chatGroupUrl}messages/$id'));
+  final res = await http.get(Uri.parse('${chatGroupUrl}/messages/$id'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -240,7 +283,9 @@ Future<List<dynamic>> getMessagesByGroupId(int id) async {
 }
 
 Future<List<dynamic>> findUsersByGroupId(int groupId, int currentUserId) async {
-  final res = await http.get(Uri.parse('${chatGroupUrl}group/users/$groupId/$currentUserId'));
+  final res = await http.get(
+    Uri.parse('${chatGroupUrl}/group/users/$groupId/$currentUserId'),
+  );
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -249,7 +294,7 @@ Future<List<dynamic>> findUsersByGroupId(int groupId, int currentUserId) async {
 }
 
 Future<dynamic> deleteGroupById(int id) async {
-  final res = await http.delete(Uri.parse('${chatGroupUrl}delete/$id'));
+  final res = await http.delete(Uri.parse('${chatGroupUrl}/delete/$id'));
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -257,8 +302,14 @@ Future<dynamic> deleteGroupById(int id) async {
   }
 }
 
-Future<dynamic> createNewGroup(Map<String, dynamic> groupData, File? file) async {
-  var request = http.MultipartRequest('POST', Uri.parse('${chatGroupUrl}create'));
+Future<dynamic> createNewGroup(
+  Map<String, dynamic> groupData,
+  File? file,
+) async {
+  var request = http.MultipartRequest(
+    'POST',
+    Uri.parse('${chatGroupUrl}/create'),
+  );
   request.fields['chatGroup'] = jsonEncode(groupData);
   if (file != null) {
     request.files.add(await http.MultipartFile.fromPath('file', file.path));
@@ -275,7 +326,7 @@ Future<dynamic> createNewGroup(Map<String, dynamic> groupData, File? file) async
 
 Future<dynamic> updateGroupById(int id, Map<String, dynamic> data) async {
   final res = await http.put(
-    Uri.parse('${chatGroupUrl}edit/$id'),
+    Uri.parse('${chatGroupUrl}/edit/$id'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode(data),
   );
@@ -287,7 +338,9 @@ Future<dynamic> updateGroupById(int id, Map<String, dynamic> data) async {
 }
 
 Future<dynamic> changeStatusIsRead(int sessionId, int receiverId) async {
-  final res = await http.put(Uri.parse('${chatUrl}changeStatus/$sessionId/$receiverId'));
+  final res = await http.put(
+    Uri.parse('${chatUrl}/changeStatus/$sessionId/$receiverId'),
+  );
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {

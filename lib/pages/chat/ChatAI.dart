@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:trackmentalhealth/core/constants/chat_api.dart';
+import 'package:trackmentalhealth/pages/chat/utils/current_user_id.dart';
 import 'package:uuid/uuid.dart';
 
 class ChatAI extends StatefulWidget {
-  final int currentUserId;
-
-  const ChatAI({super.key, required this.currentUserId});
+  const ChatAI({super.key});
 
   @override
   State<ChatAI> createState() => _ChatAIState();
@@ -18,55 +17,89 @@ class _ChatAIState extends State<ChatAI> {
   late types.User _user;
   late types.User _aiUser;
   final uuid = const Uuid();
-  bool _isLoading = true; // <-- thêm state loading
+  bool _isLoading = true;
+  int? _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _initUser(); // gọi hàm khởi tạo user
+  }
 
-    _user = types.User(id: widget.currentUserId.toString(), firstName: "You");
-    _aiUser = const types.User(id: 'ai', firstName: 'AI Doctor');
+  /// Lấy currentUserId từ SharedPreferences
+  Future<void> _initUser() async {
+    final id = await getCurrentUserId(); // hàm utils bạn đã có
+    if (!mounted) return;
 
-    // Lời chào ban đầu
-    _messages.insert(
-      0,
-      types.TextMessage(
-        id: uuid.v4(),
-        author: _aiUser,
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-        text: "Xin chào! Tôi là AI, ngày hôm nay bạn ổn chứ?",
-      ),
-    );
+    setState(() {
+      _currentUserId = id;
+      _user = types.User(id: id.toString(), firstName: "You");
+      _aiUser = const types.User(id: 'ai', firstName: 'AI Doctor');
+
+      // Lời chào ban đầu
+      _messages.insert(
+        0,
+        types.TextMessage(
+          id: uuid.v4(),
+          author: _aiUser,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          text: "Xin chào! Tôi là AI, ngày hôm nay bạn ổn chứ?",
+        ),
+      );
+    });
 
     _loadHistory();
   }
 
   Future<void> _loadHistory() async {
+    if (_currentUserId == null) {
+      debugPrint("⚠️ Không có currentUserId, bỏ qua load history");
+      return;
+    }
+
     try {
-      final history = await getAIHistory(widget.currentUserId);
+      debugPrint("🔄 Gọi API getAIHistory cho userId=$_currentUserId ...");
+      final history = await getAIHistory(_currentUserId!);
+
+      debugPrint("✅ API trả về ${history.length} items: $history");
+
       final formatted = history.map<types.Message>((h) {
         final isAI = h['role'] == 'ai';
+
+        int createdAt;
+        try {
+          createdAt = DateTime.parse(h['timestamp']).millisecondsSinceEpoch;
+        } catch (e) {
+          debugPrint("⚠️ Lỗi parse timestamp '${h['timestamp']}', dùng thời gian hiện tại");
+          createdAt = DateTime.now().millisecondsSinceEpoch;
+        }
+
         return types.TextMessage(
           id: uuid.v4(),
           author: isAI ? _aiUser : _user,
-          text: h['message'],
-          createdAt: DateTime.now().millisecondsSinceEpoch,
+          text: h['message'] ?? "(no message)",
+          createdAt: createdAt,
         );
       }).toList();
 
+      if (!mounted) return;
+
       setState(() {
         _messages.insertAll(0, formatted.reversed);
-        _isLoading = false; // <-- tắt loading sau khi load xong
-      });
-    } catch (e) {
-      debugPrint("Error load history: $e");
-      setState(() {
         _isLoading = false;
       });
+    } catch (e, stack) {
+      debugPrint("❌ Error load history: $e");
+      debugPrint("STACK TRACE: $stack");
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
     }
   }
 
   void _handleSendPressed(types.PartialText message) async {
+    if (_currentUserId == null) return;
+
     final userMessage = types.TextMessage(
       id: uuid.v4(),
       author: _user,
@@ -81,7 +114,7 @@ class _ChatAIState extends State<ChatAI> {
     try {
       final payload = {
         "message": message.text,
-        "userId": widget.currentUserId.toString(),
+        "userId": _currentUserId.toString(),
       };
       final aiReply = await chatAI(payload);
 
@@ -92,6 +125,7 @@ class _ChatAIState extends State<ChatAI> {
         createdAt: DateTime.now().millisecondsSinceEpoch,
       );
 
+      if (!mounted) return;
       setState(() {
         _messages.insert(0, aiMessage);
       });
@@ -105,6 +139,7 @@ class _ChatAIState extends State<ChatAI> {
         createdAt: DateTime.now().millisecondsSinceEpoch,
       );
 
+      if (!mounted) return;
       setState(() {
         _messages.insert(0, errorMessage);
       });
@@ -118,16 +153,14 @@ class _ChatAIState extends State<ChatAI> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           color: Colors.white,
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "AI Psychologist",
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.teal,
       ),
 
       // Hiển thị loading khi đang load lịch sử
@@ -140,7 +173,7 @@ class _ChatAIState extends State<ChatAI> {
         showUserAvatars: false,
         showUserNames: true,
         theme: const DefaultChatTheme(
-          primaryColor: Colors.blue,
+          primaryColor: Colors.teal,
           inputBackgroundColor: Colors.white,
           inputTextColor: Colors.black,
           sentMessageBodyTextStyle: TextStyle(color: Colors.white),

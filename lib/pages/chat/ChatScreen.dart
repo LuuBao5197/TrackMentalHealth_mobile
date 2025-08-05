@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:trackmentalhealth/core/constants/chat_api.dart';
 import 'dart:developer';
-
 import 'package:trackmentalhealth/pages/chat/ChatAI.dart';
+import 'package:trackmentalhealth/pages/chat/utils/current_user_id.dart';
+
+import '../../models/ChatMessage.dart';
+import '../../models/ChatMessageGroup.dart';
+import 'ChatDetail.dart';
+import 'ChatDetailGroup.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -14,28 +19,76 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   bool loading = false;
   String? error;
-  int currentUserId = 1;
+  int? currentUserId;
 
-  List<dynamic> sessions = []; // chat 1-1
-  List<dynamic> myGroup = []; // group của mình
-  List<dynamic> group = []; // tất cả group
-  List<dynamic> psychologists = []; // dropdown psychologist
+  Map<int, bool> unreadStatus = {}; // sessionId -> true/false
+  Map<int, ChatMessage?> lastestMessages =
+      {}; // key: sessionId, value: ChatMessage
+  Map<int, ChatMessageGroup?> latestMessages = {};
+  List<dynamic> sessions = [];
+  List<dynamic> myGroup = [];
+  List<dynamic> group = [];
+  List<dynamic> psychologists = [];
 
-  Map<String, dynamic>? user; // user đang login
+  Map<String, dynamic>? user;
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    _initUserIdAndFetchData();
+  }
+
+  //get lastest msg by session id
+  Future<void> _fetchLastestMessages() async {
+    for (var session in sessions) {
+      final sessionId = session['id'];
+      try {
+        final msg = await getLastestMsg(sessionId);
+        setState(() {
+          lastestMessages[sessionId] = msg; // lưu message cuối
+        });
+      } catch (e) {
+        setState(() {
+          lastestMessages[sessionId] = null; // nếu lỗi hoặc chưa có message
+        });
+      }
+    }
+  }
+
+  Future<void> loadGroups() async {
+    Future<void> loadGroups() async {
+      // fetch latest message cho từng group
+      for (var grp in group) {
+        final latestMsg = await getLastestMsgGroup(grp['id']);
+        setState(() {
+          latestMessages[grp['id']] = latestMsg;
+        });
+      }
+    }
+  }
+
+  Future<void> _initUserIdAndFetchData() async {
+    try {
+      final id = await getCurrentUserId();
+      if (id == null) {
+        setState(() => error = "User not logged in. Please login again.");
+        return;
+      }
+      setState(() => currentUserId = id);
+      _fetchData();
+    } catch (e) {
+      setState(() => error = "Error loading user ID: $e");
+    }
   }
 
   Future<void> _fetchData() async {
+    if (currentUserId == null) return;
+
     try {
       setState(() => loading = true);
 
-      // Gọi song song nhiều API
-      final sessionRes = await getChatSessionsByUserId(currentUserId);
-      final myGroupRes = await getChatGroupByCreatorId(currentUserId);
+      final sessionRes = await getChatSessionsByUserId(currentUserId!);
+      final myGroupRes = await getChatGroupByCreatorId(currentUserId!);
       final groupRes = await getAllChatGroup();
       final psyRes = await getPsychologists();
 
@@ -44,9 +97,14 @@ class _ChatScreenState extends State<ChatScreen> {
         myGroup = myGroupRes;
         group = groupRes;
         psychologists = psyRes;
-        user = {"id": currentUserId, "role": "USER"}; // giả lập login
+        user = {"id": currentUserId, "role": "USER"};
         loading = false;
       });
+
+      _checkUnreadForSessions();
+      _fetchLastestMessages();
+      loadGroups();
+
     } catch (e) {
       log("Error load data: $e");
       setState(() {
@@ -56,8 +114,23 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _checkUnreadForSessions() async {
+    for (var session in sessions) {
+      final sessionId = session['id'];
+      try {
+        final hasUnread = await hasUnreadMessages(sessionId);
+        setState(() {
+          unreadStatus[sessionId] = hasUnread;
+        });
+      } catch (e) {
+        setState(() {
+          unreadStatus[sessionId] = false;
+        });
+      }
+    }
+  }
+
   void navigateToAppointment() {
-    // TODO: navigate đến trang Appointment
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Navigate to Appointments")));
@@ -65,7 +138,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void chatWithPsychologist(int userId) async {
     try {
-      final res = await initiateChatSession(currentUserId, userId);
+      final res = await initiateChatSession(currentUserId!, userId);
       log("Initiate chat session: $res");
       // TODO: navigate vào chat detail
     } catch (e) {
@@ -76,21 +149,23 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void handleClickSession(Map<String, dynamic> session) {
-    // TODO: navigate tới chi tiết chat
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Open chat with session ${session['id']}")),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatDetail(
+          sessionId: session['id'], // Truyền sessionId vào ChatDetail
+        ),
+      ),
     );
   }
 
   void handleOpenCreateGroup() {
-    // TODO: mở modal tạo group
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Open create group modal")));
   }
 
   void handleEditGroup(Map<String, dynamic> grp) {
-    // TODO: mở modal edit group
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text("Edit group ${grp['id']}")));
@@ -102,7 +177,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Group deleted successfully")),
       );
-      _fetchData(); // refresh
+      _fetchData();
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -112,49 +187,62 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (currentUserId == null && error == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (error != null) {
+      return Scaffold(body: Center(child: Text('Error: $error')));
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Messenger', style: TextStyle(color: Colors.blue)),
+        title: const Text('Messenger', style: TextStyle(color: Colors.teal)),
+        centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          // Appointments button
-          if (user != null)
-            OutlinedButton(
-              onPressed: navigateToAppointment,
-              child: const Text('My Appointments'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (user != null)
+                  OutlinedButton(
+                    onPressed: navigateToAppointment,
+                    child: const Text('My Appointments'),
+                  ),
+                if (user != null)
+                  DropdownButton<dynamic>(
+                    hint: const Text('Chat with Psychologist'),
+                    items: psychologists.map((psy) {
+                      return DropdownMenuItem(
+                        value: psy,
+                        child: Text(psy['fullName'] ?? 'No name'),
+                      );
+                    }).toList(),
+                    onChanged: (psy) {
+                      if (psy != null)
+                        chatWithPsychologist(psy['usersID']['id']);
+                    },
+                  ),
+                if (user?['role'] == 'PSYCHO')
+                  OutlinedButton(
+                    onPressed: () {},
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.green,
+                    ),
+                    child: const Text('Manage Appointments'),
+                  ),
+              ],
             ),
-
-          // Dropdown psychologist
-          if (user != null)
-            DropdownButton<dynamic>(
-              hint: const Text('Chat with Psychologist'),
-              items: psychologists.map((psy) {
-                return DropdownMenuItem(
-                  value: psy,
-                  child: Text(psy['fullname'] ?? 'No name'),
-                );
-              }).toList(),
-              onChanged: (psy) {
-                if (psy != null) chatWithPsychologist(psy['usersID']['id']);
-              },
-            ),
-
-          // Nếu là psychologist → manage appointments
-          if (user?['role'] == 'PSYCHO')
-            OutlinedButton(
-              onPressed: () {
-                // TODO: navigate manage appointment
-              },
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.green),
-              child: const Text('Manage Appointments'),
-            ),
-        ],
+          ),
+        ),
       ),
+
       body: loading
           ? const Center(child: CircularProgressIndicator())
-          : error != null
-          ? Center(child: Text('Error: $error'))
           : RefreshIndicator(
               onRefresh: _fetchData,
               child: SingleChildScrollView(
@@ -163,7 +251,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Chat 1-1 sessions
+                    // Chat 1-1
                     if (sessions.isEmpty)
                       const Center(
                         child: Text(
@@ -180,15 +268,38 @@ class _ChatScreenState extends State<ChatScreen> {
                               ? session['receiver']
                               : session['sender'];
 
+                          final lastMsg = lastestMessages[session['id']];
+
                           return Card(
                             margin: const EdgeInsets.symmetric(vertical: 6),
                             child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: NetworkImage(
-                                  otherUser['avatar'] ??
-                                      'https://via.placeholder.com/40',
-                                ),
-                                radius: 20,
+                              leading: Stack(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundImage: NetworkImage(
+                                      otherUser['avatar'] ??
+                                          'https://via.placeholder.com/40',
+                                    ),
+                                    radius: 20,
+                                  ),
+                                  if (unreadStatus[session['id']] == true)
+                                    Positioned(
+                                      right: 0,
+                                      top: 0,
+                                      child: Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                               title: Row(
                                 mainAxisAlignment:
@@ -198,10 +309,10 @@ class _ChatScreenState extends State<ChatScreen> {
                                     otherUser['fullname']?.toUpperCase() ??
                                         'NO NAME',
                                   ),
-                                  if (session['timestamp'] != null)
+                                  if (lastMsg != null)
                                     Text(
                                       TimeOfDay.fromDateTime(
-                                        DateTime.parse(session['timestamp']),
+                                        lastMsg.timestamp,
                                       ).format(context),
                                       style: const TextStyle(
                                         fontSize: 12,
@@ -210,42 +321,10 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ),
                                 ],
                               ),
-                              subtitle: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      session['latestMessage'] ?? '',
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontWeight: session['unreadCount'] > 0
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: session['unreadCount'] > 0
-                                            ? Colors.black
-                                            : Colors.grey,
-                                      ),
-                                    ),
-                                  ),
-                                  if (session['unreadCount'] > 0)
-                                    Container(
-                                      margin: const EdgeInsets.only(left: 8),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        '${session['unreadCount']}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                              subtitle: Text(
+                                lastMsg?.message ?? 'No messages yet',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.grey),
                               ),
                               onTap: () => handleClickSession(
                                 session.cast<String, dynamic>(),
@@ -259,19 +338,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
                     // My Group
                     if (myGroup.isEmpty)
-                      Column(
-                        children: [
-                          const Text(
-                            "You don't have any groups yet.",
-                            style: TextStyle(color: Colors.grey),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          OutlinedButton(
-                            onPressed: handleOpenCreateGroup,
-                            child: const Text('Create a group chat'),
-                          ),
-                        ],
+                      Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              "You don't have any groups yet.",
+                              style: TextStyle(color: Colors.grey),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton(
+                              onPressed: handleOpenCreateGroup,
+                              child: const Text('Create a group chat'),
+                            ),
+                          ],
+                        ),
                       )
                     else
                       Column(
@@ -339,7 +421,6 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
 
                     const Divider(),
-
                     // Other Groups
                     if (group.isNotEmpty)
                       Column(
@@ -351,22 +432,38 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           const SizedBox(height: 8),
                           ...group.map((grp) {
+                            final latest = latestMessages[grp['id']];
                             return Card(
                               child: ListTile(
                                 onTap: () {
-                                  // TODO: navigate to group chat
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => ChatDetailGroup(
+                                        groupId: grp['id'] ?? '',
+                                        groupName: grp['name'],
+                                      ),
+                                    ),
+                                  );
                                 },
                                 leading: CircleAvatar(
                                   backgroundImage: NetworkImage(
-                                    grp['avt'] ??
-                                        'https://via.placeholder.com/40',
+                                    grp['avt'] ?? 'https://via.placeholder.com/40',
                                   ),
                                 ),
                                 title: Text(grp['name'] ?? 'No name'),
+
+                                // Nếu có latest message hiển thị tên người gửi + content
+                                // nếu chưa có thì hiển thị mô tả group
                                 subtitle: Text(
-                                  grp['des'] ?? 'Không có mô tả',
+                                  latest != null
+                                      ? "${latest.senderName}: ${latest.content}"
+                                      : '',
                                   style: const TextStyle(fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
+
                                 trailing: Text(
                                   'Creator: ${grp['createdBy']?['fullname'] ?? 'No data'}',
                                   style: const TextStyle(fontSize: 12),
@@ -374,6 +471,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               ),
                             );
                           }).toList(),
+
                         ],
                       ),
                   ],
@@ -384,14 +482,11 @@ class _ChatScreenState extends State<ChatScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => ChatAI(
-                  currentUserId: currentUserId),
-            ),
+            MaterialPageRoute(builder: (context) => ChatAI()),
           );
         },
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.chat),
+        backgroundColor: Colors.teal,
+        child: const Icon(Icons.mark_chat_unread_outlined),
       ),
     );
   }
