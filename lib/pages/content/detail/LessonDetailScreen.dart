@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import '../../../core/constants/api_constants.dart';
 
 class LessonDetailScreen extends StatefulWidget {
   final int lessonId;
@@ -21,7 +22,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchLesson();
     _decodeToken();
   }
 
@@ -34,16 +34,20 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         setState(() {
           userId = decoded['userId'].toString();
         });
+        _fetchLesson(); // gọi sau khi đã có userId
       } catch (e) {
         print('❌ Token không hợp lệ: $e');
+        _fetchLesson(); // vẫn gọi lesson nếu không có user
       }
+    } else {
+      _fetchLesson(); // vẫn gọi lesson nếu không có token
     }
   }
 
   Future<void> _fetchLesson() async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:9999/api/lesson/${widget.lessonId}'),
+        Uri.parse('${ApiConstants.getLessons}/${widget.lessonId}'),
       );
       if (response.statusCode == 200) {
         setState(() {
@@ -64,7 +68,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          'http://10.0.2.2:9999/api/user/$userId/lesson/${widget.lessonId}/progress',
+          '${ApiConstants.baseUrl}/user/$userId/lesson/${widget.lessonId}/progress',
         ),
       );
       if (response.statusCode == 200) {
@@ -91,7 +95,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:9999/api/user/progress/update'),
+        Uri.parse('${ApiConstants.baseUrl}/user/progress/update'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'lessonId': widget.lessonId,
@@ -140,7 +144,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero Section
             Row(
               children: [
                 Container(
@@ -185,7 +188,6 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Steps Section
             const Text(
               '📌 Steps in the lesson:',
               style: TextStyle(
@@ -197,10 +199,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             const Divider(color: Colors.blue),
             lessonSteps.isNotEmpty
                 ? Column(
-              children: lessonSteps
-                  .asMap()
-                  .entries
-                  .map((entry) {
+              children: lessonSteps.asMap().entries.map((entry) {
                 final step = entry.value;
                 return VisibilityDetector(
                   key: Key('step-${step['id']}'),
@@ -238,14 +237,16 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                               step['mediaUrl'],
                               width: MediaQuery.of(context).size.width * 0.7,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => const Text(
+                              errorBuilder: (context, error, stackTrace) =>
+                              const Text(
                                 'Không thể tải hình ảnh',
                                 style: TextStyle(color: Colors.red),
                               ),
                             ),
                           ),
                         Text(
-                          step['content'] ?? 'Nội dung bước ${step['stepNumber']} (cập nhật?)',
+                          step['content'] ??
+                              'Nội dung bước ${step['stepNumber']} (cập nhật?)',
                           style: const TextStyle(
                             fontSize: 16,
                             fontFamily: 'Georgia',
@@ -256,8 +257,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                     ),
                   ),
                 );
-              })
-                  .toList(),
+              }).toList(),
             )
                 : const Padding(
               padding: EdgeInsets.symmetric(vertical: 24.0),

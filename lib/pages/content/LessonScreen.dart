@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
+
+import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'detail/LessonDetailScreen.dart';
 
 class LessonScreen extends StatefulWidget {
@@ -15,17 +19,48 @@ class _LessonScreenState extends State<LessonScreen> {
   Map<int, int> progressMap = {};
   int currentPage = 1;
   final int lessonsPerPage = 6;
-  final bool isLoggedIn = true; // 👈 Giả lập trạng thái đăng nhập
+
+  String? userId;
+  String? token;
+  bool isLoggedIn = false;
 
   @override
   void initState() {
     super.initState();
-    fetchLessons();
+    _loadTokenAndUser();
+  }
+
+  Future<void> _loadTokenAndUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedToken = prefs.getString('token') ?? '';
+    if (storedToken.isNotEmpty) {
+      try {
+        final decoded = JwtDecoder.decode(storedToken);
+        setState(() {
+          token = storedToken;
+          userId = decoded['userId'].toString();
+          isLoggedIn = true;
+        });
+        fetchLessons(); // Gọi sau khi có token + userId
+      } catch (e) {
+        print('❌ Token không hợp lệ: $e');
+      }
+    } else {
+      print('❌ Không tìm thấy token');
+    }
   }
 
   Future<void> fetchLessons() async {
     try {
-      final response = await http.get(Uri.parse('http://10.0.2.2:9999/api/lesson'));
+      final response = await http.get(
+        Uri.parse(ApiConstants.getLessons),
+        headers: token != null
+            ? {
+          'Authorization': 'Bearer $token',
+        }
+            : {},
+      );
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final activeLessons = data.where((lesson) =>
@@ -33,15 +68,45 @@ class _LessonScreenState extends State<LessonScreen> {
 
         setState(() {
           lessons = activeLessons;
-          for (var lesson in activeLessons) {
-            progressMap[lesson['id']] = 12; // 👈 Tạm thời gán cố định
-          }
         });
+
+        // Gọi API lấy progress cho từng bài học
+        for (var lesson in activeLessons) {
+          final lessonId = lesson['id'];
+          final progress = await fetchProgressPercent(lessonId);
+          setState(() {
+            progressMap[lessonId] = progress;
+          });
+        }
       } else {
-        print("Failed to load lessons: ${response.body}");
+        print("❌ Failed to load lessons: ${response.body}");
       }
     } catch (e) {
-      print("Error: $e");
+      print("❌ Error: $e");
+    }
+  }
+
+  Future<int> fetchProgressPercent(int lessonId) async {
+    if (userId == null || token == null) return 0;
+
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/user/$userId/lesson/$lessonId/progress-percent'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final percent = json.decode(response.body);
+        return percent is int ? percent : int.tryParse(percent.toString()) ?? 0;
+      } else {
+        print('❌ Failed to fetch progress for lesson $lessonId: ${response.body}');
+        return 0;
+      }
+    } catch (e) {
+      print('❌ Error fetching progress for lesson $lessonId: $e');
+      return 0;
     }
   }
 
@@ -66,7 +131,7 @@ class _LessonScreenState extends State<LessonScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                // Navigate to login page
+                Navigator.pushNamed(context, '/login');
               },
               child: const Text('Log In'),
             ),

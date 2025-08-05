@@ -189,24 +189,29 @@ class _MainScreenState extends State<MainScreen> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.teal,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Icon(Icons.person, size: 50, color: Colors.white),
-                  SizedBox(height: 8),
-                  Text(
-                    'Hello, User!',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                    ),
+            FutureBuilder<String?>(
+              future: SharedPreferences.getInstance()
+                  .then((prefs) => prefs.getString('fullName')),
+              builder: (context, snapshot) {
+                final name = snapshot.data ?? 'User';
+                return DrawerHeader(
+                  decoration: const BoxDecoration(color: Colors.teal),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.person, size: 50, color: Colors.white),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Hello, $name!',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             ListTile(
               leading: const Icon(Icons.person),

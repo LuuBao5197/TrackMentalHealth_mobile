@@ -12,7 +12,7 @@ class User {
   final String? otp;
   final DateTime? otpExpiry;
   final Role? role;
-  final String? fullname;
+  final String? fullName;
   final String? address;
   final DateTime? dob;
   final String? gender;
@@ -29,7 +29,7 @@ class User {
     this.otp,
     this.otpExpiry,
     this.role,
-    this.fullname,
+    this.fullName,
     this.address,
     this.dob,
     this.gender,
@@ -52,7 +52,7 @@ class User {
       role: json['role'] != null
           ? Role.fromJson(json['role'] as Map<String, dynamic>)
           : null,
-      fullname: json['fullname'] as String?,
+      fullName: json['fullName'] as String?,
       address: json['address'] as String?,
       dob: json['dob'] != null ? DateTime.parse(json['dob'] as String) : null,
       gender: json['gender'] as String?,
@@ -72,7 +72,7 @@ class User {
       if (otp != null) 'otp': otp,
       if (otpExpiry != null) 'otpExpiry': otpExpiry!.toIso8601String(),
       if (role != null) 'role': role!.toJson(),
-      if (fullname != null) 'fullname': fullname,
+      if (fullName != null) 'fullName': fullName,
       if (address != null) 'address': address,
       if (dob != null) 'dob': dob!.toIso8601String(),
       if (gender != null) 'gender': gender,

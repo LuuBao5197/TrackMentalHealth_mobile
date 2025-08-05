@@ -6,6 +6,9 @@ import 'package:video_player/video_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 
+import '../../../core/constants/api_constants.dart';
+// Đảm bảo đường dẫn đúng
+
 class ExerciseDetailScreen extends StatefulWidget {
   final int exerciseId;
 
@@ -39,37 +42,37 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
           userId = decoded['userId']?.toString();
         });
       } else {
-        print('❌ Không tìm thấy token');
+        print('❌ Token not found');
       }
     } catch (e) {
-      print('❌ Lỗi giải mã token: $e');
+      print('❌ Token decoding error: $e');
     }
   }
 
   Future<void> _fetchExercise() async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:9999/api/exercise/${widget.exerciseId}'),
+        Uri.parse('${ApiConstants.getExercises}${widget.exerciseId}'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('API Response: $data'); // Log toàn bộ response
-        print('Media URL: ${data['mediaUrl']}'); // Log URL video
         setState(() {
           exercise = data;
           isLoading = false;
         });
-        if (data['mediaType'] == 'video' && data['mediaUrl'] != null && data['mediaUrl'].isNotEmpty) {
+        if (data['mediaType'] == 'video' &&
+            data['mediaUrl'] != null &&
+            data['mediaUrl'].isNotEmpty) {
           await _initializeVideoPlayer(data['mediaUrl']);
         }
       } else {
-        print('❌ Lỗi khi tải bài tập: ${response.statusCode} - ${response.body}');
+        print('❌ Failed to load exercise: ${response.statusCode} - ${response.body}');
         setState(() {
           isLoading = false;
         });
       }
     } catch (e) {
-      print('❌ Lỗi khi gọi API: $e');
+      print('❌ API error: $e');
       setState(() {
         isLoading = false;
       });
@@ -78,21 +81,19 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
 
   Future<void> _initializeVideoPlayer(String url) async {
     try {
-      print('Khởi tạo video với URL: $url'); // Log URL tại đây
       _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(url));
       await _videoPlayerController!.initialize();
-      print('Video khởi tạo thành công');
       setState(() {});
       _videoPlayerController!.addListener(() {
         if (_videoPlayerController!.value.hasError) {
           setState(() {
-            videoError = _videoPlayerController!.value.errorDescription ?? 'Lỗi không xác định khi phát video';
+            videoError = _videoPlayerController!.value.errorDescription ??
+                'Unknown video error';
           });
-          print('❌ Lỗi video: $videoError');
         }
       });
     } catch (e, stackTrace) {
-      print('❌ Lỗi khi khởi tạo video: $e');
+      print('❌ Video init error: $e');
       print('Stack trace: $stackTrace');
       setState(() {
         videoError = e.toString();
@@ -125,7 +126,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         appBar: AppBar(title: const Text('Exercise Detail')),
         body: const Center(
           child: Text(
-            'Không thể tải chi tiết bài tập.',
+            'Failed to load exercise.',
             style: TextStyle(fontSize: 24, color: Colors.red),
           ),
         ),
@@ -141,7 +142,6 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero Section
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -183,7 +183,6 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            // Media Section
             const Text(
               '🎧 Exercise Content',
               style: TextStyle(
@@ -193,24 +192,28 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            if (exercise!['mediaType'] == 'audio' && exercise!['mediaUrl'] != null)
+            if (exercise!['mediaType'] == 'audio' &&
+                exercise!['mediaUrl'] != null)
               Column(
                 children: [
                   AudioPlayerWidget(url: exercise!['mediaUrl']),
                   const SizedBox(height: 12),
                 ],
               ),
-            if (exercise!['mediaType'] == 'video' && exercise!['mediaUrl'] != null)
+            if (exercise!['mediaType'] == 'video' &&
+                exercise!['mediaUrl'] != null)
               Column(
                 children: [
-                  if (_videoPlayerController != null && _videoPlayerController!.value.isInitialized)
+                  if (_videoPlayerController != null &&
+                      _videoPlayerController!.value.isInitialized)
                     AspectRatio(
                       aspectRatio: _videoPlayerController!.value.aspectRatio,
                       child: Stack(
                         alignment: Alignment.bottomCenter,
                         children: [
                           VideoPlayer(_videoPlayerController!),
-                          VideoProgressIndicator(_videoPlayerController!, allowScrubbing: true),
+                          VideoProgressIndicator(_videoPlayerController!,
+                              allowScrubbing: true),
                           Positioned(
                             bottom: 10,
                             child: FloatingActionButton(
@@ -222,7 +225,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                                 });
                               },
                               child: Icon(
-                                _videoPlayerController!.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                                _videoPlayerController!.value.isPlaying
+                                    ? Icons.pause
+                                    : Icons.play_arrow,
                               ),
                             ),
                           ),
@@ -231,7 +236,8 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     )
                   else
                     Text(
-                      videoError ?? 'Không thể tải video. Vui lòng kiểm tra kết nối internet hoặc liên hệ hỗ trợ.',
+                      videoError ??
+                          'Video failed to load. Check your internet or contact support.',
                       style: const TextStyle(color: Colors.red),
                     ),
                   const SizedBox(height: 12),
@@ -239,7 +245,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
               ),
             if (exercise!['estimatedDuration'] != null)
               Text(
-                '⏱️ Thời gian ước tính: ${exercise!['estimatedDuration']} giây',
+                '⏱️ Estimated time: ${exercise!['estimatedDuration']} seconds',
                 style: const TextStyle(fontSize: 16, color: Colors.grey),
               ),
           ],
@@ -261,12 +267,12 @@ class AudioPlayerWidget extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'Audio: $url',
+            'Audio URL: $url',
             style: const TextStyle(fontSize: 16, color: Colors.blue),
           ),
           const SizedBox(height: 8),
           const Text(
-            'Flutter không hỗ trợ <audio> trực tiếp. Sử dụng gói như `just_audio` để phát âm thanh.',
+            'Note: Use packages like `just_audio` for real audio playback.',
             style: TextStyle(color: Colors.red),
           ),
         ],
