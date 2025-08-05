@@ -12,7 +12,14 @@ class ApiConstants {
   static const String verifyOtp = baseUrl + '/users/verify-otp-register';
   static const String checkEmailExists = baseUrl + '/users/check-email';
 
+  //Lesson,Article,Exercise
+  static const String getLessons = '$baseUrl/lesson';
+  static const String getExercises = '$baseUrl/exercise/';
+  static const String getArticles = '$baseUrl/article/';
+
   //chat api
-  static const String getChatSessionByUserId = baseUrl + '/chat/session';
+  static const String getChatSessionByUserId = '$baseUrl/chat/session';
+
+
 
 }

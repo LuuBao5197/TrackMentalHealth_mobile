@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:trackmentalhealth/pages/content/detail/ArticleDetailScreen.dart';
+import '../../core/constants/api_constants.dart';
+
 
 class ArticleScreen extends StatefulWidget {
   const ArticleScreen({super.key});
@@ -21,7 +23,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
 
   Future<void> fetchArticles() async {
     try {
-      final res = await http.get(Uri.parse('http://10.0.2.2:9999/api/article/'));
+      final res = await http.get(Uri.parse(ApiConstants.getArticles)); // 👈 dùng API constants
       if (res.statusCode == 200) {
         List data = json.decode(res.body);
         final activeArticles = data.where((a) => a['status'] == true || a['status'] == 'true').toList();
@@ -48,7 +50,7 @@ class _ArticleScreenState extends State<ArticleScreen> {
           final article = articles[index];
           final imageUrl = (article['photo'] ?? "").startsWith('http')
               ? article['photo']
-              : 'https://via.placeholder.com/300x180';
+              : 'https://via.placeholder.com/300x180'; // 👈 Có thể cập nhật nếu cần dùng ipLocal
 
           return GestureDetector(
             onTap: () {
@@ -70,7 +72,12 @@ class _ArticleScreenState extends State<ArticleScreen> {
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                    child: Image.network(imageUrl, height: 180, width: double.infinity, fit: BoxFit.cover),
+                    child: Image.network(
+                      imageUrl,
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(12),
