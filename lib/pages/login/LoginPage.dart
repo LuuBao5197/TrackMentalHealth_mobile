@@ -49,7 +49,7 @@
             final user = User.fromJson(data);
 
             final prefs = await SharedPreferences.getInstance();
-            await prefs.setInt('userId', user.id ?? 0);
+            // await prefs.setInt('userId', user.id ?? 0);
             await prefs.setString('token', user.token ?? '');
             await prefs.setString('email', user.email ?? '');
 
