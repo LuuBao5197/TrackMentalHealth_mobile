@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String baseUrl = "http://172.20.10.3:9999/api";
+const String baseUrl = "http://192.168.3.7:9999/api";
 
 // 🛡️ Hàm lấy header có token thực từ SharedPreferences
 Future<Map<String, String>> getHeaders() async {

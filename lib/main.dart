@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
+import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
 import 'package:trackmentalhealth/pages/home/HeroPage.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
+import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
+import 'package:trackmentalhealth/pages/content/ContentTabScreen.dart';
 import 'core/constants/app_colors.dart';
 import 'core/constants/theme_provider.dart';
 
@@ -27,7 +31,7 @@ class TrackMentalHealthApp extends StatelessWidget {
     return MaterialApp(
       title: 'Track Mental Health',
       debugShowCheckedModeBanner: false,
-      themeMode: themeProvider.themeMode, // ✅ Tự động theo hệ điều hành
+      themeMode: themeProvider.themeMode,
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: Colors.teal,
@@ -49,7 +53,7 @@ class TrackMentalHealthApp extends StatelessWidget {
           foregroundColor: Colors.tealAccent,
         ),
       ),
-      home: const MainScreen(),
+      home: const LoginPage(),
     );
   }
 }
@@ -70,7 +74,9 @@ class _MainScreenState extends State<MainScreen> {
     const TestScreen(),
     const DiaryScreen(),
     const BlogScreen(),
+    const ChatScreen(),
     const ProfileScreen(),
+    const ContentTabScreen(),
   ];
 
   void _onTabTapped(int index) {
@@ -79,9 +85,11 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  /// ✅ Đây là phần bị thiếu lúc trước – hàm hiển thị điều hướng responsive
   Widget _buildNavigation(BuildContext context) {
-    final isWideScreen = MediaQuery.of(context).size.width >= 600;
+    final isWideScreen = MediaQuery
+        .of(context)
+        .size
+        .width >= 600;
 
     if (isWideScreen) {
       return NavigationRail(
@@ -95,6 +103,21 @@ class _MainScreenState extends State<MainScreen> {
           NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
           NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
           NavigationRailDestination(icon: Icon(Icons.person), label: Text("Profile")),
+          NavigationRailDestination(icon: Icon(Icons.menu_book), label: Text("Content")),
+          NavigationRailDestination(
+              icon: Icon(Icons.home), label: Text("Home")),
+          NavigationRailDestination(
+              icon: Icon(Icons.emoji_emotions), label: Text("Mood")),
+          NavigationRailDestination(
+              icon: Icon(Icons.quiz), label: Text("Test")),
+          NavigationRailDestination(
+              icon: Icon(Icons.mood), label: Text("Diary")),
+          NavigationRailDestination(
+              icon: Icon(Icons.article), label: Text("Blog")),
+          NavigationRailDestination(
+              icon: Icon(Icons.messenger_outline_rounded), label: Text("Chat")),
+          NavigationRailDestination(
+              icon: Icon(Icons.person), label: Text("Profile")),
         ],
       );
     }
@@ -106,23 +129,35 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.white,
       selectedItemColor: Colors.teal[700],
       unselectedItemColor: Colors.grey,
-      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+      selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.bold, fontSize: 13),
       unselectedLabelStyle: const TextStyle(fontSize: 12),
       elevation: 10,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.emoji_emotions), label: 'Mood'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.emoji_emotions), label: 'Mood'),
         BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test'),
         BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.article_rounded), label: 'Blog'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.messenger_outline_rounded), label: 'Chat'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.person_rounded), label: 'Profile'),
         BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
         BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+        BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Content'),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isWideScreen = MediaQuery.of(context).size.width >= 600;
+    final isWideScreen = MediaQuery
+        .of(context)
+        .size
+        .width >= 600;
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
 
@@ -150,16 +185,77 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            FutureBuilder<String?>(
+              future: SharedPreferences.getInstance()
+                  .then((prefs) => prefs.getString('fullName')),
+              builder: (context, snapshot) {
+                final name = snapshot.data ?? 'User';
+                return DrawerHeader(
+                  decoration: const BoxDecoration(color: Colors.teal),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.person, size: 50, color: Colors.white),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Hello, $name!',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                _onTabTapped(5);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Settings Page chưa được tạo.')),
+                );
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Logout'),
+              onTap: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('token');
+
+                if (!mounted) return;
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
       body: Row(
         children: [
-          if (isWideScreen)
-            _buildNavigation(context), // dùng NavigationRail
+          if (isWideScreen) _buildNavigation(context),
           Expanded(child: _screens[_selectedIndex]),
         ],
       ),
-      bottomNavigationBar: isWideScreen ? null : _buildNavigation(context), // dùng BottomNavigationBar nếu là mobile
+      bottomNavigationBar: isWideScreen ? null : _buildNavigation(
+          context), // dùng BottomNavigationBar nếu là mobile
     );
   }
 }
-
-
