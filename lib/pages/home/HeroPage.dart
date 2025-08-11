@@ -204,6 +204,15 @@ class _HeroPageState extends State<HeroPage> {
                   textStyle: const TextStyle(fontSize: 16),
                 ),
               ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                icon: const Icon(Icons.history),
+                label: const Text("📈 Xem lịch sử cảm xúc"),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/mood-history');
+                },
+              ),
+
             ],
           ),
         ),
