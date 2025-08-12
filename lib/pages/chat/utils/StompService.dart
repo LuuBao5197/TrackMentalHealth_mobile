@@ -8,7 +8,7 @@ class StompService {
   bool _connected = false;
 
   // Thay đổi IP theo backend của bạn
-  static const String ipLocal = '192.168.1.7';
+  static const String ipLocal = '192.168.1.45';
   final String _socketUrl = 'ws://$ipLocal:9999/ws';
 
   /// Khởi tạo kết nối STOMP

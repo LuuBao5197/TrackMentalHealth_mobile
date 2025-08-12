@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:trackmentalhealth/core/constants/chat_api.dart';
+import 'package:trackmentalhealth/models/Psychologist.dart';
 import 'dart:developer';
 import 'package:trackmentalhealth/pages/chat/ChatAI.dart';
 import 'package:trackmentalhealth/pages/chat/utils/current_user_id.dart';
@@ -22,14 +23,12 @@ class _ChatScreenState extends State<ChatScreen> {
   int? currentUserId;
 
   Map<int, bool> unreadStatus = {}; // sessionId -> true/false
-  Map<int, ChatMessage?> lastestMessages =
-      {}; // key: sessionId, value: ChatMessage
-  Map<int, ChatMessageGroup?> latestMessages = {};
+  Map<int, ChatMessage?> lastestMessages = {};
+  Map<int, ChatMessageGroup?> latestMessagesGroup = {};
   List<dynamic> sessions = [];
   List<dynamic> myGroup = [];
   List<dynamic> group = [];
-  List<dynamic> psychologists = [];
-
+  List<Psychologist> psychologists = [];
   Map<String, dynamic>? user;
 
   @override
@@ -61,7 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
       for (var grp in group) {
         final latestMsg = await getLastestMsgGroup(grp['id']);
         setState(() {
-          latestMessages[grp['id']] = latestMsg;
+          latestMessagesGroup[grp['id']] = latestMsg;
         });
       }
     }
@@ -86,7 +85,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       setState(() => loading = true);
-
       final sessionRes = await getChatSessionsByUserId(currentUserId!);
       final myGroupRes = await getChatGroupByCreatorId(currentUserId!);
       final groupRes = await getAllChatGroup();
@@ -100,6 +98,7 @@ class _ChatScreenState extends State<ChatScreen> {
         user = {"id": currentUserId, "role": "USER"};
         loading = false;
       });
+
 
       _checkUnreadForSessions();
       _fetchLastestMessages();
@@ -214,19 +213,21 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: const Text('My Appointments'),
                   ),
                 if (user != null)
-                  DropdownButton<dynamic>(
+                  DropdownButton<Psychologist>(
                     hint: const Text('Chat with Psychologist'),
                     items: psychologists.map((psy) {
-                      return DropdownMenuItem(
+                      return DropdownMenuItem<Psychologist>(
                         value: psy,
-                        child: Text(psy['fullName'] ?? 'No name'),
+                        child: Text(psy.usersID?.fullName ?? 'No name'),
                       );
                     }).toList(),
                     onChanged: (psy) {
-                      if (psy != null)
-                        chatWithPsychologist(psy['usersID']['id']);
+                      if (psy != null && psy.usersID?.id != null) {
+                        chatWithPsychologist(psy.usersID!.id!);
+                      }
                     },
                   ),
+
                 if (user?['role'] == 'PSYCHO')
                   OutlinedButton(
                     onPressed: () {},
@@ -432,7 +433,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           const SizedBox(height: 8),
                           ...group.map((grp) {
-                            final latest = latestMessages[grp['id']];
+                            final latest = latestMessagesGroup[grp['id']];
                             return Card(
                               child: ListTile(
                                 onTap: () {

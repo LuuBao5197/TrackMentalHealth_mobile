@@ -180,8 +180,10 @@ class _ChatDetailState extends State<ChatDetail> {
             inputBackgroundColor: Colors.white,
             inputTextColor: Colors.black,
             sentMessageBodyTextStyle: TextStyle(color: Colors.white),
+            // Thêm border cho input
           ),
         ),
+
       ),
     );
   }
