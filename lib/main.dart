@@ -1,8 +1,13 @@
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
 import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
 import 'package:trackmentalhealth/pages/home/HeroPage.dart';
@@ -72,6 +77,11 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
@@ -89,6 +99,42 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = index;
     });
   }
+
+  String? fullname;
+  String? avatarUrl;
+  Future<void> _loadProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('id');
+      final token = prefs.getString('token');
+
+      if (userId == null || token == null) {
+        debugPrint("User ID hoặc token bị null");
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'), // ❌ bỏ bớt /api thừa
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token', // ✅ gửi token
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          fullname = data['fullname'] ?? "User";
+        });
+        await prefs.setString('fullname', fullname!);
+      } else {
+        debugPrint("Failed to load profile: ${response.body}");
+      }
+    } catch (e) {
+      debugPrint("Error loading profile: $e");
+    }
+  }
+
 
   Widget _buildNavigation(BuildContext context) {
     final isWideScreen = MediaQuery.of(context).size.width >= 600;
@@ -166,29 +212,22 @@ class _MainScreenState extends State<MainScreen> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
-            FutureBuilder<String?>(
-              future: SharedPreferences.getInstance()
-                  .then((prefs) => prefs.getString('fullname')),
-              builder: (context, snapshot) {
-                final name = snapshot.data ?? 'User';
-                return DrawerHeader(
-                  decoration: const BoxDecoration(color: Colors.teal),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.person, size: 50, color: Colors.white),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Hello, $name!',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.teal),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.person, size: 50, color: Colors.white),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Hello, ${fullname ?? "Loading..."}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                    ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.person),
@@ -213,7 +252,7 @@ class _MainScreenState extends State<MainScreen> {
               title: const Text('Logout'),
               onTap: () async {
                 final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('token');
+                await prefs.clear();
                 await FirebaseAuth.instance.signOut();
                 final googleSignIn = GoogleSignIn();
                 if (await googleSignIn.isSignedIn()) {
