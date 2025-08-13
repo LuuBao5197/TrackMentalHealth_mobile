@@ -52,7 +52,7 @@ class User {
       role: json['role'] != null
           ? Role.fromJson(json['role'] as Map<String, dynamic>)
           : null,
-      fullName: json['fullName'] as String?,
+      fullName: json['fullname'] as String?,
       address: json['address'] as String?,
       dob: json['dob'] != null ? DateTime.parse(json['dob'] as String) : null,
       gender: json['gender'] as String?,
@@ -72,7 +72,7 @@ class User {
       if (otp != null) 'otp': otp,
       if (otpExpiry != null) 'otpExpiry': otpExpiry!.toIso8601String(),
       if (role != null) 'role': role!.toJson(),
-      if (fullName != null) 'fullName': fullName,
+      if (fullName != null) 'fullname': fullName,
       if (address != null) 'address': address,
       if (dob != null) 'dob': dob!.toIso8601String(),
       if (gender != null) 'gender': gender,
