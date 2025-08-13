@@ -6,10 +6,10 @@ import 'package:trackmentalhealth/models/ChatMessageGroup.dart';
 
 import '../../models/ChatMessage.dart';
 
-const String ipLocal = '192.168.1.7';
+const String ipLocal = '10.242.86.205';
 const String baseUrl = 'http://${ipLocal}:9999/api';
 
-// ==== Chat ====
+ // ==== Chat ====
 const String chatUrl = '$baseUrl/chat';
 const String appointmentUrl = '$baseUrl/appointment';
 const String psyUrl = '$baseUrl/psychologist';
