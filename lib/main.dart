@@ -7,6 +7,12 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+
+import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
+import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
+import 'package:trackmentalhealth/pages/content/permissions.dart';
+
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
 import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
@@ -16,12 +22,16 @@ import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
 import 'package:trackmentalhealth/pages/content/ContentTabScreen.dart';
+
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-void main() async{
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Gọi xin quyền trước khi vào app
+  await requestAppPermissions();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -150,6 +160,7 @@ class _MainScreenState extends State<MainScreen> {
           NavigationRailDestination(icon: Icon(Icons.quiz), label: Text("Test")),
           NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
           NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
+          NavigationRailDestination(icon: Icon(Icons.messenger_outline_rounded), label: Text("Chat")),
           NavigationRailDestination(icon: Icon(Icons.person), label: Text("Profile")),
           NavigationRailDestination(icon: Icon(Icons.menu_book), label: Text("Content")),
         ],
@@ -172,6 +183,7 @@ class _MainScreenState extends State<MainScreen> {
         BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test'),
         BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
         BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
+        BottomNavigationBarItem(icon: Icon(Icons.messenger_outline_rounded), label: 'Chat'),
         BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Content'),
       ],
@@ -233,7 +245,7 @@ class _MainScreenState extends State<MainScreen> {
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
               onTap: () {
-                _onTabTapped(5);
+                _onTabTapped(6); // chuyển sang tab Profile
                 Navigator.pop(context);
               },
             ),
