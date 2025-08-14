@@ -1,8 +1,14 @@
+import 'dart:convert';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
-import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
 import 'package:trackmentalhealth/pages/home/HeroPage.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
@@ -10,10 +16,15 @@ import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
 import 'package:trackmentalhealth/pages/content/ContentTabScreen.dart';
-import 'core/constants/app_colors.dart';
 import 'core/constants/theme_provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -66,6 +77,11 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
@@ -74,7 +90,6 @@ class _MainScreenState extends State<MainScreen> {
     const TestScreen(),
     const DiaryScreen(),
     const BlogScreen(),
-    const ChatScreen(),
     const ProfileScreen(),
     const ContentTabScreen(),
   ];
@@ -85,11 +100,44 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  String? fullname;
+  String? avatarUrl;
+  Future<void> _loadProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('id');
+      final token = prefs.getString('token');
+
+      if (userId == null || token == null) {
+        debugPrint("User ID hoặc token bị null");
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'), // ❌ bỏ bớt /api thừa
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token', // ✅ gửi token
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          fullname = data['fullname'] ?? "User";
+        });
+        await prefs.setString('fullname', fullname!);
+      } else {
+        debugPrint("Failed to load profile: ${response.body}");
+      }
+    } catch (e) {
+      debugPrint("Error loading profile: $e");
+    }
+  }
+
+
   Widget _buildNavigation(BuildContext context) {
-    final isWideScreen = MediaQuery
-        .of(context)
-        .size
-        .width >= 600;
+    final isWideScreen = MediaQuery.of(context).size.width >= 600;
 
     if (isWideScreen) {
       return NavigationRail(
@@ -104,20 +152,6 @@ class _MainScreenState extends State<MainScreen> {
           NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
           NavigationRailDestination(icon: Icon(Icons.person), label: Text("Profile")),
           NavigationRailDestination(icon: Icon(Icons.menu_book), label: Text("Content")),
-          NavigationRailDestination(
-              icon: Icon(Icons.home), label: Text("Home")),
-          NavigationRailDestination(
-              icon: Icon(Icons.emoji_emotions), label: Text("Mood")),
-          NavigationRailDestination(
-              icon: Icon(Icons.quiz), label: Text("Test")),
-          NavigationRailDestination(
-              icon: Icon(Icons.mood), label: Text("Diary")),
-          NavigationRailDestination(
-              icon: Icon(Icons.article), label: Text("Blog")),
-          NavigationRailDestination(
-              icon: Icon(Icons.messenger_outline_rounded), label: Text("Chat")),
-          NavigationRailDestination(
-              icon: Icon(Icons.person), label: Text("Profile")),
         ],
       );
     }
@@ -129,22 +163,14 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.white,
       selectedItemColor: Colors.teal[700],
       unselectedItemColor: Colors.grey,
-      selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold, fontSize: 13),
+      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
       unselectedLabelStyle: const TextStyle(fontSize: 12),
       elevation: 10,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.emoji_emotions), label: 'Mood'),
+        BottomNavigationBarItem(icon: Icon(Icons.emoji_emotions), label: 'Mood'),
         BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test'),
         BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.article_rounded), label: 'Blog'),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.messenger_outline_rounded), label: 'Chat'),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded), label: 'Profile'),
         BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
         BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Content'),
@@ -154,10 +180,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWideScreen = MediaQuery
-        .of(context)
-        .size
-        .width >= 600;
+    final isWideScreen = MediaQuery.of(context).size.width >= 600;
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
 
@@ -189,29 +212,22 @@ class _MainScreenState extends State<MainScreen> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
-            FutureBuilder<String?>(
-              future: SharedPreferences.getInstance()
-                  .then((prefs) => prefs.getString('fullName')),
-              builder: (context, snapshot) {
-                final name = snapshot.data ?? 'User';
-                return DrawerHeader(
-                  decoration: const BoxDecoration(color: Colors.teal),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.person, size: 50, color: Colors.white),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Hello, $name!',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.teal),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.person, size: 50, color: Colors.white),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Hello, ${fullname ?? "Loading..."}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                    ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.person),
@@ -236,8 +252,12 @@ class _MainScreenState extends State<MainScreen> {
               title: const Text('Logout'),
               onTap: () async {
                 final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('token');
-
+                await prefs.clear();
+                await FirebaseAuth.instance.signOut();
+                final googleSignIn = GoogleSignIn();
+                if (await googleSignIn.isSignedIn()) {
+                  await googleSignIn.signOut();
+                }
                 if (!mounted) return;
                 Navigator.pushReplacement(
                   context,
@@ -254,8 +274,7 @@ class _MainScreenState extends State<MainScreen> {
           Expanded(child: _screens[_selectedIndex]),
         ],
       ),
-      bottomNavigationBar: isWideScreen ? null : _buildNavigation(
-          context), // dùng BottomNavigationBar nếu là mobile
+      bottomNavigationBar: isWideScreen ? null : _buildNavigation(context),
     );
   }
 }
