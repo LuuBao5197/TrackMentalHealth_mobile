@@ -9,6 +9,7 @@ import 'package:trackmentalhealth/main.dart';
 import 'package:trackmentalhealth/models/User.dart' as model;
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -84,6 +85,18 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void parseToken(String token) {
+    // Giải mã token
+    Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+
+    int userId = decodedToken['userId'];
+    String email = decodedToken['sub'];
+    String role = decodedToken['role'];
+
+    print('User ID: $userId');
+    print('Email: $email');
+    print('Role: $role');
+  }
 
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
@@ -105,55 +118,53 @@ class _LoginPageState extends State<LoginPage> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
+      print('Login API raw response: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final user = model.User.fromJson(data);
+        final token = data['token'] as String;
+
+        // ✅ Giải mã token
+        final decodedToken = JwtDecoder.decode(token);
+        final userId = decodedToken['userId'];
+        final emailFromToken = decodedToken['sub'];
+        final role = decodedToken['role'];
+
+        print('Decoded userId: $userId');
+        print('Decoded email: $emailFromToken');
+        print('Decoded role: $role');
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('userId', user.id ?? 0);
-        await prefs.setString('token', user.token ?? '');
-        await prefs.setString('email', user.email ?? '');
+        await prefs.setString('token', token);
+        await prefs.setInt('id', userId);
+        await prefs.setString('email', emailFromToken);
 
-        // 🔁 Gọi API lấy fullName
+        // ✅ Gọi API lấy fullname từ userId
         final profileResponse = await http.get(
-          Uri.parse(ApiConstants.getProfile),
-          headers: {'Authorization': 'Bearer ${user.token}'},
+          Uri.parse(ApiConstants.getProfileById(userId)),
+          headers: {'Authorization': 'Bearer $token'},
         );
-        print('Profile response: ${profileResponse.body}');
-
 
         if (profileResponse.statusCode == 200) {
           final profileData = jsonDecode(profileResponse.body);
           final fullName = profileData['fullname'];
-          final userId = profileData['id'];
-          final role = profileData['role']?['name'];
 
-          if (userId != null) {
-            await prefs.setInt('userId', userId);
-          }
           if (fullName != null) {
             await prefs.setString('fullname', fullName);
           }
-          if (role != null) {
-            await prefs.setString('role', role);
-          }
-          print("Saved fullname: $fullName");
         }
 
-        // 🕐 Chờ 1 giây trước khi điều hướng
-        await Future.delayed(const Duration(seconds: 1));
-
-        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
-      } else {
+      }
+      else {
         final errorData = jsonDecode(response.body);
         setState(() => _error = errorData['error'] ?? 'Đăng nhập thất bại.');
       }
     } catch (e) {
+      print('Login error: $e');
       setState(() => _error = "Lỗi kết nối đến máy chủ.");
     } finally {
       setState(() => _isLoading = false);
