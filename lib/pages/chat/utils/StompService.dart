@@ -8,7 +8,7 @@ class StompService {
   bool _connected = false;
 
   // Thay đổi IP theo backend của bạn
-  static const String ipLocal = '192.168.1.45';
+  static const String ipLocal = '192.168.1.5';
   final String _socketUrl = 'ws://$ipLocal:9999/ws';
 
   /// Khởi tạo kết nối STOMP
@@ -21,7 +21,7 @@ class StompService {
         url: _socketUrl,
         onConnect: (frame) {
           _connected = true;
-          print("✅ STOMP connected: ${frame.headers}");
+          print("✅ STOMP connected");
           onConnect(frame);
         },
         beforeConnect: () async {
@@ -45,7 +45,7 @@ class StompService {
     _stompClient.activate();
   }
 
-  /// Subscribe tới một topic
+  /// Subscribe tới một topic (chat hoặc call)
   void subscribe(String destination, void Function(StompFrame frame) callback) {
     if (!_connected) {
       print('⚠️ Cannot subscribe, STOMP not connected');
@@ -55,15 +55,26 @@ class StompService {
     _stompClient.subscribe(destination: destination, callback: callback);
   }
 
-  /// Gửi tin nhắn (dùng cho cả 1-1 và group)
+  /// Gửi tin nhắn chat
   void sendMessage(String destination, Map<String, dynamic> body) {
+    _send(destination, body);
+  }
+
+  /// Gửi tín hiệu video call (offer, answer, candidate)
+  void sendCallSignal(int sessionId, Map<String, dynamic> signal) {
+    final destination = "/app/call/$sessionId";
+    _send(destination, signal);
+  }
+
+  /// Hàm private gửi dữ liệu chung
+  void _send(String destination, Map<String, dynamic> body) {
     if (!_connected) {
       print('⚠️ Cannot send, STOMP not connected');
       return;
     }
 
-    final jsonBody = jsonEncode(body); // Chuyển thành JSON string
-    print('📤 Sending message to $destination: $jsonBody');
+    final jsonBody = jsonEncode(body);
+    print('📤 Sending to $destination: $jsonBody');
 
     _stompClient.send(
       destination: destination,
