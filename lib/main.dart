@@ -27,14 +27,18 @@ import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-
-void main() async {
+void main() async{
   WidgetsFlutterBinding.ensureInitialized();
-  // Gọi xin quyền trước khi vào app
-  await requestAppPermissions();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Gọi xin quyền trước khi vào app
+  await requestAppPermissions();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -100,6 +104,7 @@ class _MainScreenState extends State<MainScreen> {
     const TestScreen(),
     const DiaryScreen(),
     const BlogScreen(),
+    const ChatScreen(),
     const ProfileScreen(),
     const ContentTabScreen(),
   ];
@@ -245,7 +250,7 @@ class _MainScreenState extends State<MainScreen> {
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
               onTap: () {
-                _onTabTapped(6); // chuyển sang tab Profile
+                _onTabTapped(5);
                 Navigator.pop(context);
               },
             ),

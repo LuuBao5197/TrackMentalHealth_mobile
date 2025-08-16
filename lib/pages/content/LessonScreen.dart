@@ -61,28 +61,37 @@ class _LessonScreenState extends State<LessonScreen> {
             : {},
       );
 
+      print("📡 Lessons API status: ${response.statusCode}");
+      print("📡 Lessons API body: ${response.body}");
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final activeLessons = data.where((lesson) =>
-        lesson['status'] == true || lesson['status'] == 'true').toList();
+        final activeLessons = data
+            .where((lesson) =>
+        lesson['status'] == true || lesson['status'] == 'true')
+            .toList();
 
         setState(() {
           lessons = activeLessons;
         });
 
-        // Gọi API lấy progress cho từng bài học
+        // Tạo một map tạm để gom progress
+        final newProgressMap = <int, int>{};
         for (var lesson in activeLessons) {
           final lessonId = lesson['id'];
           final progress = await fetchProgressPercent(lessonId);
-          setState(() {
-            progressMap[lessonId] = progress;
-          });
+          newProgressMap[lessonId] = progress;
         }
+
+        // Update progressMap một lần
+        setState(() {
+          progressMap = newProgressMap;
+        });
       } else {
         print("❌ Failed to load lessons: ${response.body}");
       }
     } catch (e) {
-      print("❌ Error: $e");
+      print("❌ Error fetchLessons: $e");
     }
   }
 
@@ -90,16 +99,36 @@ class _LessonScreenState extends State<LessonScreen> {
     if (userId == null || token == null) return 0;
 
     try {
+      final url =
+          '${ApiConstants.baseUrl}/user/$userId/lesson/$lessonId/progress-percent';
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/user/$userId/lesson/$lessonId/progress-percent'),
+        Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
+      print('📡 Progress API [$lessonId] status: ${response.statusCode}');
+      print('📡 Progress API [$lessonId] body: ${response.body}');
+
       if (response.statusCode == 200) {
-        final percent = json.decode(response.body);
-        return percent is int ? percent : int.tryParse(percent.toString()) ?? 0;
+        final body = json.decode(response.body);
+
+        if (body is int) {
+          return body;
+        } else if (body is double) {
+          return body.round(); // ví dụ 100.0 -> 100
+        } else if (body is String) {
+          return int.tryParse(body) ?? double.tryParse(body)?.round() ?? 0;
+        } else if (body is Map) {
+          if (body.containsKey("progressPercent")) {
+            return (body["progressPercent"] as num).round();
+          }
+          if (body.containsKey("percent")) {
+            return (body["percent"] as num).round();
+          }
+        }
+        return 0;
       } else {
         print('❌ Failed to fetch progress for lesson $lessonId: ${response.body}');
         return 0;
@@ -109,6 +138,7 @@ class _LessonScreenState extends State<LessonScreen> {
       return 0;
     }
   }
+
 
   List get currentLessons {
     final start = (currentPage - 1) * lessonsPerPage;
@@ -177,11 +207,13 @@ class _LessonScreenState extends State<LessonScreen> {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            const Text("Explore engaging lessons", style: TextStyle(fontSize: 18)),
+            const Text("Explore engaging lessons",
+                style: TextStyle(fontSize: 18)),
             const SizedBox(height: 10),
             Expanded(
               child: GridView.count(
-                crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
+                crossAxisCount:
+                MediaQuery.of(context).size.width > 600 ? 3 : 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
                 childAspectRatio: 3 / 4,
@@ -195,14 +227,16 @@ class _LessonScreenState extends State<LessonScreen> {
                     onTap: () => handleLessonTap(lesson['id']),
                     child: Card(
                       elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       child: Stack(
                         children: [
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               ClipRRect(
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(12)),
                                 child: Image.network(
                                   imageUrl,
                                   height: 100,
@@ -219,14 +253,16 @@ class _LessonScreenState extends State<LessonScreen> {
                                       lesson['title'] ?? '',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       lesson['description'] ?? '',
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 13),
+                                      style:
+                                      const TextStyle(fontSize: 13),
                                     ),
                                   ],
                                 ),
@@ -253,7 +289,8 @@ class _LessonScreenState extends State<LessonScreen> {
                   return ElevatedButton(
                     onPressed: () => setState(() => currentPage = index),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: currentPage == index ? Colors.teal : Colors.grey,
+                      backgroundColor:
+                      currentPage == index ? Colors.teal : Colors.grey,
                     ),
                     child: Text("$index"),
                   );
