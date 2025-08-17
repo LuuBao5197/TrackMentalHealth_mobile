@@ -55,7 +55,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> loadGroups() async {
-    Future<void> loadGroups() async {
       // fetch latest message cho từng group
       for (var grp in group) {
         final latestMsg = await getLastestMsgGroup(grp['id']);
@@ -63,7 +62,6 @@ class _ChatScreenState extends State<ChatScreen> {
           latestMessagesGroup[grp['id']] = latestMsg;
         });
       }
-    }
   }
 
   Future<void> _initUserIdAndFetchData() async {
@@ -147,16 +145,22 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void handleClickSession(Map<String, dynamic> session) {
+  void handleClickSession({
+    required int sessionId,
+    required Map<String, dynamic> receiver,
+  }) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ChatDetail(
-          sessionId: session['id'], // Truyền sessionId vào ChatDetail
+          sessionId: sessionId,
+          user: receiver,
         ),
       ),
     );
   }
+
+
 
   void handleOpenCreateGroup() {
     ScaffoldMessenger.of(
@@ -327,9 +331,19 @@ class _ChatScreenState extends State<ChatScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(color: Colors.grey),
                               ),
-                              onTap: () => handleClickSession(
-                                session.cast<String, dynamic>(),
-                              ),
+                                onTap: () {
+                                  final sess = session; // vì session là 1 phần tử trong list rồi
+
+                                  final user = currentUserId == sess['sender']['id']
+                                      ? sess['receiver']
+                                      : sess['sender'];
+
+                                  handleClickSession(
+                                    sessionId: sess['id'],
+                                    receiver: user,
+                                  );
+                                },
+
                             ),
                           );
                         }).toList(),
