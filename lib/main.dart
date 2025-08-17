@@ -105,19 +105,23 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _loadProfile() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('id');
       final token = prefs.getString('token');
+      final userId = prefs.getInt('userId');   // 👈 lấy từ Firebase
 
-      if (userId == null || token == null) {
-        debugPrint("User ID hoặc token bị null");
+      if (userId == null) {
+        debugPrint("userId bị null");
+        return;
+      }
+
+      if (token == null){
+        debugPrint("Token bị null");
         return;
       }
 
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'), // ❌ bỏ bớt /api thừa
+        Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'),
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token', // ✅ gửi token
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -134,7 +138,6 @@ class _MainScreenState extends State<MainScreen> {
       debugPrint("Error loading profile: $e");
     }
   }
-
 
   Widget _buildNavigation(BuildContext context) {
     final isWideScreen = MediaQuery.of(context).size.width >= 600;

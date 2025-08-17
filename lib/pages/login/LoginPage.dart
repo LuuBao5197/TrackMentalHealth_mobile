@@ -38,7 +38,6 @@ class _LoginPageState extends State<LoginPage> {
       ).signIn();
 
       if (googleUser == null) {
-        // Người dùng hủy đăng nhập
         setState(() {
           _isLoading = false;
           _error = "Bạn đã hủy đăng nhập.";
@@ -49,20 +48,36 @@ class _LoginPageState extends State<LoginPage> {
       final GoogleSignInAuthentication googleAuth =
       await googleUser.authentication;
 
+      // 🔑 Dùng GoogleAuthProvider để login Firebase (tùy bạn có cần Firebase không)
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
       await FirebaseAuth.instance.signInWithCredential(credential);
 
-      final user = userCredential.user;
-      if (user != null) {
+      // ✅ Lấy Google ID Token (KHÔNG phải Firebase token)
+      final idToken = googleAuth.idToken;
+      if (idToken == null) {
+        setState(() => _error = "Không lấy được Google ID Token.");
+        return;
+      }
+
+      // ✅ Gọi API backend với Google ID Token
+      final response = await http.post(
+        Uri.parse("${ApiConstants.baseUrl}/auth/oauth/google?idToken=$idToken"),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('fullname', user.displayName ?? '');
-        await prefs.setString('email', user.email ?? '');
-        await prefs.setString('token', await user.getIdToken() ?? '');
+        await prefs.setString('token', data['token']);   // JWT backend trả về
+        await prefs.setInt('userId', data['user']['id']);
+        await prefs.setString('fullname', data['user']['fullname']);
+        await prefs.setString('email', data['user']['email']);
+        await prefs.setString('avatar', data['user']['avatar'] ?? '');
+        await prefs.setString('role', data['user']['role']);
 
         if (!mounted) return;
         Navigator.pushReplacement(
@@ -70,9 +85,7 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
       } else {
-        setState(() {
-          _error = "Không lấy được thông tin người dùng.";
-        });
+        setState(() => _error = "Đăng nhập Google thất bại: ${response.body}");
       }
     } catch (e) {
       setState(() {
