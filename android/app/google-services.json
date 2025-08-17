@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "690375211652",
+    "project_id": "project-1439c",
+    "storage_bucket": "project-1439c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:690375211652:android:175016a2f2f4e2839e20d1",
+        "android_client_info": {
+          "package_name": "com.example.trackmentalhealth"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB98d-6xe6eqJwvCuOIO6-07zhfOl6jY8k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
