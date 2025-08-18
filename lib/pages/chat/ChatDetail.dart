@@ -1,6 +1,6 @@
 import 'dart:convert'; // Thêm để dùng jsonEncode
 import 'package:flutter/material.dart';
-import 'package:flutter_chat_ui/flutter_chat_ui.dart';
+import 'package:flutter_chat_ui/flutter_chat_ui.dart' hide ChatMessage;
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:trackmentalhealth/core/constants/chat_api.dart';
 import 'package:trackmentalhealth/pages/chat/VideoCall.dart';
