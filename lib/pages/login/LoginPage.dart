@@ -33,12 +33,12 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      // 🔹 Bắt đầu chọn tài khoản Google
       final GoogleSignInAccount? googleUser = await GoogleSignIn(
         scopes: ['email', 'profile'],
       ).signIn();
 
       if (googleUser == null) {
-        // Người dùng hủy đăng nhập
         setState(() {
           _isLoading = false;
           _error = "Bạn đã hủy đăng nhập.";
@@ -46,23 +46,43 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth =
-      await googleUser.authentication;
+      // 🔹 Lấy token từ Google
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCredential =
+      // 🔹 Đăng nhập Firebase (nếu bạn không cần Firebase thì có thể bỏ)
       await FirebaseAuth.instance.signInWithCredential(credential);
 
-      final user = userCredential.user;
-      if (user != null) {
+      // 🔹 Lấy Google ID Token để gửi backend
+      final idToken = googleAuth.idToken;
+      if (idToken == null) {
+        await GoogleSignIn().signOut();
+        await FirebaseAuth.instance.signOut();
+
+        setState(() => _error = "Không lấy được Google ID Token.");
+        return;
+      }
+
+      // 🔹 Gọi API backend xác thực
+      final response = await http.post(
+        Uri.parse("${ApiConstants.baseUrl}/auth/oauth/google?idToken=$idToken"),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('fullname', user.displayName ?? '');
-        await prefs.setString('email', user.email ?? '');
-        await prefs.setString('token', await user.getIdToken() ?? '');
+        await prefs.clear();
+        await prefs.setString('token', data['token']);   // JWT từ backend
+        await prefs.setInt('userId', data['user']['id']);
+        await prefs.setString('fullname', data['user']['fullname']);
+        await prefs.setString('email', data['user']['email']);
+        await prefs.setString('avatar', data['user']['avatar'] ?? '');
+        await prefs.setString('role', data['user']['role']);
 
         if (!mounted) return;
         Navigator.pushReplacement(
@@ -70,14 +90,29 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
       } else {
+        // ❌ Backend trả về lỗi → logout Google + Firebase
+        final errorData = jsonDecode(response.body);
+        await GoogleSignIn().signOut();
+        await FirebaseAuth.instance.signOut();
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+
         setState(() {
-          _error = "Không lấy được thông tin người dùng.";
+          throw Exception(response.body);
         });
       }
     } catch (e) {
-      setState(() {
-        _error = "Đăng nhập Google thất bại: $e";
-      });
+      // ❌ Exception → logout Google + Firebase
+      await GoogleSignIn().signOut();
+      await FirebaseAuth.instance.signOut();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
+      );
     } finally {
       setState(() {
         _isLoading = false;
@@ -136,24 +171,30 @@ class _LoginPageState extends State<LoginPage> {
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', token);
-        await prefs.setInt('id', userId);
+        await prefs.setInt('userId', userId);
         await prefs.setString('email', emailFromToken);
+        await prefs.setString('role', role);
 
-        // ✅ Gọi API lấy fullname từ userId
+        // ✅ Gọi API lấy profile
         final profileResponse = await http.get(
-          Uri.parse(ApiConstants.getProfileById(userId)),
-          headers: {'Authorization': 'Bearer $token'},
+          Uri.parse("${ApiConstants.baseUrl}/users/profile/$userId"),
+          headers: {"Authorization": "Bearer $token"},
         );
 
         if (profileResponse.statusCode == 200) {
           final profileData = jsonDecode(profileResponse.body);
-          final fullName = profileData['fullname'];
 
-          if (fullName != null) {
-            await prefs.setString('fullname', fullName);
+          // Lưu fullname, avatar,... nếu có
+          if (profileData['fullname'] != null) {
+            await prefs.setString('fullname', profileData['fullname']);
+          }
+          if (profileData['avatar'] != null) {
+            await prefs.setString('avatar', profileData['avatar']);
           }
         }
 
+        // ✅ Điều hướng
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MainScreen()),
