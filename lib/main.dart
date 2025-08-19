@@ -102,42 +102,54 @@ class _MainScreenState extends State<MainScreen> {
 
   String? fullname;
   String? avatarUrl;
+  bool _loadingProfile = true;
   Future<void> _loadProfile() async {
+    setState(() => _loadingProfile = true);
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
-      final userId = prefs.getInt('userId');   // 👈 lấy từ Firebase
+      final userId = prefs.getInt('userId');
 
-      if (userId == null) {
-        debugPrint("userId bị null");
-        return;
-      }
-
-      if (token == null){
-        debugPrint("Token bị null");
+      if (userId == null || token == null) {
+        debugPrint("userId hoặc token bị null");
+        setState(() => _loadingProfile = false);
         return;
       }
 
       final response = await http.get(
         Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
+        String? avatar = data['avatar'];
+        // Nếu backend trả về filename, ghép thành URL
+        if (avatar != null && !avatar.startsWith('http')) {
+          avatar = '${ApiConstants.baseUrl}/uploads/$avatar';
+        }
+
         setState(() {
           fullname = data['fullname'] ?? "User";
+          avatarUrl = data['avatar']; // trực tiếp lấy URL Cloudinary
+          _loadingProfile = false;
         });
-        await prefs.setString('fullname', fullname!);
+
+        if (avatarUrl != null) {
+          await prefs.setString('avatarUrl', avatarUrl!);
+        }
       } else {
         debugPrint("Failed to load profile: ${response.body}");
+        setState(() => _loadingProfile = false);
       }
     } catch (e) {
       debugPrint("Error loading profile: $e");
+      setState(() => _loadingProfile = false);
     }
   }
+
 
   Widget _buildNavigation(BuildContext context) {
     final isWideScreen = MediaQuery.of(context).size.width >= 600;
@@ -220,10 +232,18 @@ class _MainScreenState extends State<MainScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.person, size: 50, color: Colors.white),
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundImage: (avatarUrl != null && avatarUrl!.isNotEmpty)
+                        ? NetworkImage(avatarUrl!)
+                        : null,
+                    child: (avatarUrl == null || avatarUrl!.isEmpty)
+                        ? const Icon(Icons.person, size: 40, color: Colors.white)
+                        : null,
+                  ),
                   const SizedBox(height: 8),
                   Text(
-                    'Hello, ${fullname ?? "Loading..."}',
+                    _loadingProfile ? 'Loading...' : 'Hello, ${fullname ?? "User"}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -235,9 +255,15 @@ class _MainScreenState extends State<MainScreen> {
             ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
-              onTap: () {
-                _onTabTapped(5);
+              onTap: () async {
                 Navigator.pop(context);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+                if (result == true) {
+                  _loadProfile(); // reload dữ liệu fullname/avatar
+                }
               },
             ),
             ListTile(
