@@ -7,6 +7,12 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+
+import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
+import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
+import 'package:trackmentalhealth/pages/content/permissions.dart';
+
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
 import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
@@ -16,6 +22,7 @@ import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
 import 'package:trackmentalhealth/pages/content/ContentTabScreen.dart';
+
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -25,6 +32,13 @@ void main() async{
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Gọi xin quyền trước khi vào app
+  await requestAppPermissions();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -90,6 +104,7 @@ class _MainScreenState extends State<MainScreen> {
     const TestScreen(),
     const DiaryScreen(),
     const BlogScreen(),
+    const ChatScreen(),
     const ProfileScreen(),
     const ContentTabScreen(),
   ];
@@ -105,19 +120,23 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _loadProfile() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('id');
       final token = prefs.getString('token');
+      final userId = prefs.getInt('userId');   // 👈 lấy từ Firebase
 
-      if (userId == null || token == null) {
-        debugPrint("User ID hoặc token bị null");
+      if (userId == null) {
+        debugPrint("userId bị null");
+        return;
+      }
+
+      if (token == null){
+        debugPrint("Token bị null");
         return;
       }
 
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'), // ❌ bỏ bớt /api thừa
+        Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'),
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token', // ✅ gửi token
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -135,7 +154,6 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-
   Widget _buildNavigation(BuildContext context) {
     final isWideScreen = MediaQuery.of(context).size.width >= 600;
 
@@ -150,6 +168,7 @@ class _MainScreenState extends State<MainScreen> {
           NavigationRailDestination(icon: Icon(Icons.quiz), label: Text("Test")),
           NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
           NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
+          NavigationRailDestination(icon: Icon(Icons.messenger_outline_rounded), label: Text("Chat")),
           NavigationRailDestination(icon: Icon(Icons.person), label: Text("Profile")),
           NavigationRailDestination(icon: Icon(Icons.menu_book), label: Text("Content")),
         ],
@@ -172,6 +191,7 @@ class _MainScreenState extends State<MainScreen> {
         BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test'),
         BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
         BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
+        BottomNavigationBarItem(icon: Icon(Icons.messenger_outline_rounded), label: 'Chat'),
         BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Content'),
       ],
