@@ -29,7 +29,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isRegistering = false;
   bool _canResend = false;
   Timer? _countdownTimer;
-  int _secondsRemaining = 120;
+  int _secondsRemaining = 300;
   bool _emailExists = false;
   bool _checkingEmail = false;
 
@@ -89,8 +89,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _verifyOtp() async {
     setState(() => _isVerifying = true);
 
-    final uri = Uri.parse(ApiConstants.verifyOtp)
-        .replace(queryParameters: {
+    final uri = Uri.parse(ApiConstants.verifyOtp).replace(queryParameters: {
       'email': _emailController.text.trim(),
       'otp': _otpController.text.trim()
     });
@@ -100,7 +99,27 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (response.statusCode == 200) {
       setState(() => _otpVerified = true);
-      _showDialog('Success', 'OTP verified. You can now complete registration.');
+      await _register();
+      setState(() => _otpVerified = true);
+
+      // Hiển thị thông báo thành công và chuyển về Login
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Success'),
+          content: const Text('Registration Successfully!'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                );
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     } else {
       final error = jsonDecode(response.body)['error'] ?? 'Invalid OTP';
       _showDialog('Error', error);
@@ -117,12 +136,14 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isRegistering = true);
 
     try {
-      final request = http.MultipartRequest('POST', Uri.parse(ApiConstants.register));
+      final request =
+      http.MultipartRequest('POST', Uri.parse(ApiConstants.register));
       request.fields['fullName'] = _fullNameController.text;
       request.fields['email'] = _emailController.text;
       request.fields['password'] = _passwordController.text;
       request.fields['confirmPassword'] = _confirmPasswordController.text;
       request.fields['roleId'] = '5';
+      request.fields['isApproved'] = 'True';
 
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
@@ -132,59 +153,17 @@ class _RegisterPageState extends State<RegisterPage> {
       if (response.statusCode == 200) {
         final parsed = json.decode(responseBody);
         print('Response parsed: $parsed');
-
-        final token = parsed['token'];
-        final roleId = parsed['roleId'];
-        final fullName = parsed['fullName']; // hoặc 'fullname' tùy backend
-
-        setState(() {
-          _isRegistering = false;
-        });
-
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Success'),
-            content: const Text('Registration successful!'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => const LoginPage()),
-                  );
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+        // giữ nguyên logic parse token/roleId nếu cần
       } else {
         print('Response status: ${response.statusCode}');
         print('Response body: $responseBody');
-        setState(() {
-          _isRegistering = false;
-        });
-
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Error'),
-            content: const Text('An error occurred during registration.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+        _showDialog('Error', 'An error occurred during registration.');
       }
     } catch (e) {
       setState(() => _isRegistering = false);
       _showDialog('Error', 'An error occurred: $e');
     }
   }
-
 
   // ======== Helpers ========
   String get _formattedTime {
@@ -194,7 +173,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   void _startTimer() {
-    _secondsRemaining = 120;
+    _secondsRemaining = 300;
     _canResend = false;
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -210,16 +189,15 @@ class _RegisterPageState extends State<RegisterPage> {
   void _showDialog(String title, String message) {
     showDialog(
       context: context,
-      builder: (_) =>
-          AlertDialog(
-            title: Text(title),
-            content: Text(message),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'))
-            ],
-          ),
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'))
+        ],
+      ),
     );
   }
 
@@ -238,18 +216,48 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
+      appBar: AppBar(
+        title: const Text("Create Account"),
+        centerTitle: true,
+        elevation: 0,
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: 20),
+                // --- Title
+                Text(
+                  "Register",
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Fill in your details to create an account",
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+
+                // --- Email
                 TextFormField(
                   controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'Email',
+                    labelText: "Email",
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onChanged: (value) {
                     if (value.contains('@')) {
@@ -261,71 +269,148 @@ class _RegisterPageState extends State<RegisterPage> {
                     }
                   },
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Required';
-                    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                    if (!emailRegex.hasMatch(value)) return 'Invalid format';
-                    if (_emailExists) return 'Email already exists';
+                    if (value == null || value.isEmpty) return "Required";
+                    final emailRegex =
+                    RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                    if (!emailRegex.hasMatch(value)) return "Invalid format";
+                    if (_emailExists) return "Email already exists";
                     return null;
                   },
                 ),
+                const SizedBox(height: 16),
+
+                // --- Full Name
                 TextFormField(
                   controller: _fullNameController,
-                  decoration: const InputDecoration(labelText: 'Full Name'),
+                  decoration: InputDecoration(
+                    labelText: "Full Name",
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   validator: (value) =>
-                  value == null || value.isEmpty ? 'Required' : null,
+                  value == null || value.isEmpty ? "Required" : null,
                 ),
+                const SizedBox(height: 16),
+
+                // --- Password
                 TextFormField(
                   controller: _passwordController,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  decoration: InputDecoration(
+                    labelText: "Password",
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   validator: (value) =>
-                  value != null && value.length < 6 ? 'Min 6 chars' : null,
+                  value != null && value.length < 6 ? "Min 6 chars" : null,
                 ),
+                const SizedBox(height: 16),
+
+                // --- Confirm Password
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Confirm Password'),
-                  validator: (value) =>
-                  value != _passwordController.text
-                      ? 'Passwords do not match'
+                  decoration: InputDecoration(
+                    labelText: "Confirm Password",
+                    prefixIcon: const Icon(Icons.lock_reset_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) => value != _passwordController.text
+                      ? "Passwords do not match"
                       : null,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
+
+                // --- Send OTP
                 _isSendingOtp
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
+                    ? const Center(child: CircularProgressIndicator())
+                    : ElevatedButton.icon(
                   onPressed: _sendOtp,
-                  child: const Text('Send OTP'),
+                  icon: const Icon(Icons.send_to_mobile),
+                  label: const Text("Send OTP"),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
+
                 if (_showOtpField) ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
+
+                  // --- OTP Field
                   TextFormField(
                     controller: _otpController,
-                    decoration: const InputDecoration(labelText: 'Enter OTP'),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: "Enter OTP",
+                      prefixIcon: const Icon(Icons.password_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
+
+                  // --- Verify OTP
                   _isVerifying
-                      ? const CircularProgressIndicator()
-                      : ElevatedButton(
+                      ? const Center(child: CircularProgressIndicator())
+                      : ElevatedButton.icon(
                     onPressed: _verifyOtp,
-                    child: const Text('Verify OTP'),
+                    icon: const Icon(Icons.verified_user_outlined),
+                    label: const Text("Verify OTP"),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
+
+                  // --- Resend OTP
                   _canResend
-                      ? ElevatedButton(
+                      ? TextButton.icon(
                     onPressed: _sendOtp,
-                    child: const Text('Resend OTP'),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text("Resend OTP"),
                   )
-                      : Text('Resend in $_formattedTime'),
+                      : Text(
+                    "Resend in $_formattedTime",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
                 ],
-                const SizedBox(height: 20),
-                _isRegistering
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                  onPressed: () async {
-                    await _register(); // gọi đăng ký và tự xử lý chuyển trang bên trong
-                  },
-                  child: const Text('Register'),
+
+                const SizedBox(height: 24),
+
+                // --- Already have account
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Already have an account? "),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => const LoginPage(),
+                          ),
+                        );
+                      },
+                      child: const Text("Login"),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -334,4 +419,5 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
     );
   }
+
 }
