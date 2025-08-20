@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 
 import '../../core/constants/api_constants.dart';
 import 'detail/ExerciseDetailScreen.dart';
- // 👈 import ApiConstants
 
 class ExerciseScreen extends StatefulWidget {
   const ExerciseScreen({super.key});
@@ -25,7 +24,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
 
   Future<void> fetchExercises() async {
     try {
-      final response = await http.get(Uri.parse(ApiConstants.getExercises)); // 👈 dùng URL từ ApiConstants
+      final response = await http.get(Uri.parse(ApiConstants.getExercises));
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         final filtered = data.where((ex) =>
@@ -49,16 +48,19 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
   Widget buildExerciseCard(dynamic ex) {
     final String imageUrl = (ex['photo'] != null && ex['photo'].toString().isNotEmpty)
         ? (ex['photo'].toString().startsWith('http')
-        ? ex['photo']
-        : 'http://${ApiConstants.ipLocal}:9999/uploads/${ex['photo']}') // 👈 dùng ipLocal từ ApiConstants
+        ? ex['photo'].toString()
+        : 'http://${ApiConstants.ipLocal}:9999/uploads/${ex['photo'].toString()}')
         : 'https://via.placeholder.com/400x200.png?text=Exercise';
+
+    // Chuyển id sang String khi truyền sang ExerciseDetailScreen
+    final String exerciseIdStr = ex['id'].toString();
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ExerciseDetailScreen(exerciseId: ex['id']),
+            builder: (context) => ExerciseDetailScreen(exerciseId: exerciseIdStr),
           ),
         );
       },
