@@ -13,7 +13,7 @@ class TestModel {
     return TestModel(
       id: json['id'],
       title: json['title'],
-      description: json['description'],
+      description: json['description'] ?? '',
     );
   }
 }
