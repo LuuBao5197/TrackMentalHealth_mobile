@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/main.dart';
 import 'package:trackmentalhealth/models/User.dart' as model;
+import 'package:trackmentalhealth/pages/login/ForgotPasswordPage.dart';
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
@@ -26,6 +27,25 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   String? _error;
 
+  /// Extracts an error message safely from API responses.
+  String _getErrorMessage(http.Response response) {
+    try {
+      final parsed = jsonDecode(response.body);
+      if (parsed is Map<String, dynamic>) {
+        for (final key in ['message', 'error', 'detail', 'msg']) {
+          final value = parsed[key];
+          if (value is String && value.trim().isNotEmpty) return value.trim();
+        }
+      }
+      if (parsed is String && parsed.trim().isNotEmpty) {
+        return parsed.trim();
+      }
+    } catch (_) {
+      // Ignore JSON parsing errors
+    }
+    return response.body.toString().trim();
+  }
+
   Future<void> _signInWithGoogle() async {
     setState(() {
       _isLoading = true;
@@ -33,36 +53,49 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn(
+      final googleUser = await GoogleSignIn(
         scopes: ['email', 'profile'],
       ).signIn();
 
       if (googleUser == null) {
-        // Người dùng hủy đăng nhập
         setState(() {
           _isLoading = false;
-          _error = "Bạn đã hủy đăng nhập.";
+          _error = "You cancelled Google sign in.";
         });
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth =
-      await googleUser.authentication;
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
 
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+      if (idToken == null) {
+        setState(() => _error = "Unable to get Google ID Token.");
+        return;
+      }
+
+      // Send idToken to backend
+      final response = await http.post(
+        Uri.parse("${ApiConstants.baseUrl}/auth/oauth/google?idToken=$idToken"),
       );
 
-      final userCredential =
-      await FirebaseAuth.instance.signInWithCredential(credential);
+      print("Google login API response: ${response.body}");
 
-      final user = userCredential.user;
-      if (user != null) {
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final user = data['user'];
+
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('fullname', user.displayName ?? '');
-        await prefs.setString('email', user.email ?? '');
-        await prefs.setString('token', await user.getIdToken() ?? '');
+        await prefs.clear();
+        await prefs.setString('token', data['token']);
+        await prefs.setInt('userId', user['id']); // nằm trong user
+        await prefs.setString('fullname', user['fullname']);
+        await prefs.setString('avatar', user['avatar'] ?? '');
+        await prefs.setString('role', user['role']);
+        await prefs.setString('email', user['email']);
+
+        // Extract email from JWT token
+        final decodedToken = JwtDecoder.decode(data['token']);
+        await prefs.setString('email', decodedToken['sub']);
 
         if (!mounted) return;
         Navigator.pushReplacement(
@@ -70,23 +103,26 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
       } else {
-        setState(() {
-          _error = "Không lấy được thông tin người dùng.";
-        });
+        final msg = _getErrorMessage(response);
+        setState(() => _error = msg);
+        //Clear sạch dữ liệu cũ
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        await FirebaseAuth.instance.signOut();
+        final googleSignIn = GoogleSignIn();
+        if (await googleSignIn.isSignedIn()) {
+          await googleSignIn.signOut();
+        }
       }
     } catch (e) {
-      setState(() {
-        _error = "Đăng nhập Google thất bại: $e";
-      });
+      print("Google login error: $e");
+      setState(() => _error = "Google login failed. Please try again.");
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
   void parseToken(String token) {
-    // Giải mã token
     Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
 
     int userId = decodedToken['userId'];
@@ -103,7 +139,7 @@ class _LoginPageState extends State<LoginPage> {
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = "Vui lòng nhập đầy đủ thông tin.");
+      setState(() => _error = "Please enter all required fields.");
       return;
     }
 
@@ -124,48 +160,46 @@ class _LoginPageState extends State<LoginPage> {
         final data = jsonDecode(response.body);
         final token = data['token'] as String;
 
-        // ✅ Giải mã token
         final decodedToken = JwtDecoder.decode(token);
         final userId = decodedToken['userId'];
         final emailFromToken = decodedToken['sub'];
         final role = decodedToken['role'];
 
-        print('Decoded userId: $userId');
-        print('Decoded email: $emailFromToken');
-        print('Decoded role: $role');
-
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', token);
-        await prefs.setInt('id', userId);
+        await prefs.setInt('userId', userId);
         await prefs.setString('email', emailFromToken);
+        await prefs.setString('role', role);
 
-        // ✅ Gọi API lấy fullname từ userId
+        // Fetch user profile
         final profileResponse = await http.get(
-          Uri.parse(ApiConstants.getProfileById(userId)),
-          headers: {'Authorization': 'Bearer $token'},
+          Uri.parse("${ApiConstants.baseUrl}/users/profile/$userId"),
+          headers: {"Authorization": "Bearer $token"},
         );
 
         if (profileResponse.statusCode == 200) {
           final profileData = jsonDecode(profileResponse.body);
-          final fullName = profileData['fullname'];
 
-          if (fullName != null) {
-            await prefs.setString('fullname', fullName);
+          if (profileData['fullname'] != null) {
+            await prefs.setString('fullname', profileData['fullname']);
+          }
+          if (profileData['avatar'] != null) {
+            await prefs.setString('avatar', profileData['avatar']);
           }
         }
 
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
-      }
-      else {
-        final errorData = jsonDecode(response.body);
-        setState(() => _error = errorData['error'] ?? 'Đăng nhập thất bại.');
+      } else {
+        final msg = _getErrorMessage(response);
+        setState(() => _error = msg);
       }
     } catch (e) {
       print('Login error: $e');
-      setState(() => _error = "Lỗi kết nối đến máy chủ.");
+      setState(() => _error = "Unable to connect to server. Please try again.");
     } finally {
       setState(() => _isLoading = false);
     }
@@ -237,7 +271,7 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(
-                        onPressed: _signInWithGoogle, // ✅ Gọi hàm ở đây
+                        onPressed: _signInWithGoogle,
                         icon: const Icon(Icons.email_outlined, color: Colors.blue),
                         iconSize: 40,
                         tooltip: 'Login with Google',
@@ -268,7 +302,8 @@ class _LoginPageState extends State<LoginPage> {
                           ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
                       )
                           : const Text('Login'),
                       style: ElevatedButton.styleFrom(
@@ -282,7 +317,10 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: () {
-                      // TODO: Forgot password
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                      );
                     },
                     child: const Text('Forgot password?'),
                   ),
@@ -294,7 +332,8 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const RegisterPage()),
+                            MaterialPageRoute(
+                                builder: (context) => const RegisterPage()),
                           );
                         },
                         child: const Text('Register'),

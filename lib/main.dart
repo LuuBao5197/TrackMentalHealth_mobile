@@ -7,6 +7,12 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+
+import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
+import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
+import 'package:trackmentalhealth/pages/content/permissions.dart';
+
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
 import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
@@ -16,15 +22,18 @@ import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
 import 'package:trackmentalhealth/pages/content/ContentTabScreen.dart';
+
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-void main() async{
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
+  // Gọi xin quyền trước khi vào app
+  await requestAppPermissions();
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
@@ -90,6 +99,7 @@ class _MainScreenState extends State<MainScreen> {
     const TestScreen(),
     const DiaryScreen(),
     const BlogScreen(),
+    const ChatScreen(),
     const ProfileScreen(),
     const ContentTabScreen(),
   ];
@@ -102,36 +112,51 @@ class _MainScreenState extends State<MainScreen> {
 
   String? fullname;
   String? avatarUrl;
+  bool _loadingProfile = true;
   Future<void> _loadProfile() async {
+    setState(() => _loadingProfile = true);
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('id');
       final token = prefs.getString('token');
+      final userId = prefs.getInt('userId');
 
       if (userId == null || token == null) {
-        debugPrint("User ID hoặc token bị null");
+        debugPrint("userId hoặc token bị null");
+        setState(() => _loadingProfile = false);
         return;
       }
 
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'), // ❌ bỏ bớt /api thừa
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token', // ✅ gửi token
-        },
+        Uri.parse('${ApiConstants.baseUrl}/users/profile/$userId'),
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
+        String? avatar = data['avatar'];
+        // Nếu backend trả về filename, ghép thành URL
+        if (avatar != null && !avatar.startsWith('http')) {
+          avatar = '${ApiConstants.baseUrl}/uploads/$avatar';
+        }
+
         setState(() {
           fullname = data['fullname'] ?? "User";
+          avatarUrl = data['avatar']; // trực tiếp lấy URL Cloudinary
+          _loadingProfile = false;
         });
-        await prefs.setString('fullname', fullname!);
+
+        if (avatarUrl != null) {
+          await prefs.setString('avatarUrl', avatarUrl!);
+        }
       } else {
         debugPrint("Failed to load profile: ${response.body}");
+        setState(() => _loadingProfile = false);
       }
     } catch (e) {
       debugPrint("Error loading profile: $e");
+      setState(() => _loadingProfile = false);
     }
   }
 
@@ -150,6 +175,7 @@ class _MainScreenState extends State<MainScreen> {
           NavigationRailDestination(icon: Icon(Icons.quiz), label: Text("Test")),
           NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
           NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
+          NavigationRailDestination(icon: Icon(Icons.messenger_outline_rounded), label: Text("Chat")),
           NavigationRailDestination(icon: Icon(Icons.person), label: Text("Profile")),
           NavigationRailDestination(icon: Icon(Icons.menu_book), label: Text("Content")),
         ],
@@ -172,6 +198,7 @@ class _MainScreenState extends State<MainScreen> {
         BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test'),
         BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
         BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
+        BottomNavigationBarItem(icon: Icon(Icons.messenger_outline_rounded), label: 'Chat'),
         BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Content'),
       ],
@@ -217,10 +244,18 @@ class _MainScreenState extends State<MainScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.person, size: 50, color: Colors.white),
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundImage: (avatarUrl != null && avatarUrl!.isNotEmpty)
+                        ? NetworkImage(avatarUrl!)
+                        : null,
+                    child: (avatarUrl == null || avatarUrl!.isEmpty)
+                        ? const Icon(Icons.person, size: 40, color: Colors.white)
+                        : null,
+                  ),
                   const SizedBox(height: 8),
                   Text(
-                    'Hello, ${fullname ?? "Loading..."}',
+                    _loadingProfile ? 'Loading...' : 'Hello, ${fullname ?? "User"}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -232,9 +267,15 @@ class _MainScreenState extends State<MainScreen> {
             ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
-              onTap: () {
-                _onTabTapped(5);
+              onTap: () async {
                 Navigator.pop(context);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+                if (result == true) {
+                  _loadProfile(); // reload dữ liệu fullname/avatar
+                }
               },
             ),
             ListTile(
