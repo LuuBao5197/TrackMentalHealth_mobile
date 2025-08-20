@@ -12,7 +12,7 @@ android {
     defaultConfig {
         applicationId = "com.example.trackmentalhealth"
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 33
         versionCode = 1
         versionName = "1.0.0"
         multiDexEnabled = true
