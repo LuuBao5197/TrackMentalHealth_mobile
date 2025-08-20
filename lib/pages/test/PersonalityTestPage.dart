@@ -5,16 +5,10 @@ import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
 import '../../models/AnswerRequest.dart';
 
-// void main() {
-//   runApp(const MaterialApp(
-//     home: PersonalityTestPage(),
-//     debugShowCheckedModeBanner: false,
-//   ));
-// }
-
 class PersonalityTestPage extends StatefulWidget {
   final int testId;
   const PersonalityTestPage({super.key, required this.testId});
+
   @override
   State<PersonalityTestPage> createState() => _PersonalityTestPageState();
 }
@@ -22,12 +16,15 @@ class PersonalityTestPage extends StatefulWidget {
 class _PersonalityTestPageState extends State<PersonalityTestPage> {
   int currentQuestionIndex = 0;
   Map<int, int> selectedAnswers = {};
+  List<int> markedForReview = [];
   int totalScore = 0;
   bool isFinished = false;
 
   bool isLoading = true;
   bool isError = false;
   Map<String, dynamic>? testData;
+
+  PageController pageController = PageController();
 
   @override
   void initState() {
@@ -37,8 +34,9 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
 
   Future<void> fetchTestData() async {
     try {
-      final response =
-      await http.get(Uri.parse('${ApiConstants.baseUrl}/tests}/${widget.testId}'));
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/test/${widget.testId}'),
+      );
 
       if (response.statusCode == 200) {
         setState(() {
@@ -57,41 +55,19 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
     }
   }
 
-  Future<void> nextQuestion() async {
-    final questionId = testData!['questions'][currentQuestionIndex]['id'];
-    if (selectedAnswers[questionId] == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Vui lòng chọn một đáp án!")),
-      );
-      return;
-    }
-
-    if (currentQuestionIndex < testData!['questions'].length - 1) {
-      setState(() => currentQuestionIndex++);
-    } else {
-      // Kiểm tra xem có câu nào chưa trả lời
-      final unanswered = testData!['questions'].where((q) => !selectedAnswers.containsKey(q['id'])).toList();
-      if (unanswered.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("⚠️ Bạn chưa trả lời ${unanswered.length} câu hỏi."),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-        return;
+  void toggleMarkReview(int questionId) {
+    setState(() {
+      if (markedForReview.contains(questionId)) {
+        markedForReview.remove(questionId);
+      } else {
+        markedForReview.add(questionId);
       }
-
-      totalScore = selectedAnswers.values.fold(0, (a, b) => a + b);
-      setState(() => isFinished = true);
-      await saveResult();
-    }
-
+    });
   }
 
-  void previousQuestion() {
-    if (currentQuestionIndex > 0) {
-      setState(() => currentQuestionIndex--);
-    }
+  void scrollToQuestion(int index) {
+    pageController.jumpToPage(index);
+    setState(() => currentQuestionIndex = index);
   }
 
   String getResultText() {
@@ -104,6 +80,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
     }
     return "Không xác định được kết quả.";
   }
+
   Future<void> saveResult() async {
     final userId = 1; // Hoặc lấy từ token/session
     final testId = testData!['id'];
@@ -114,14 +91,6 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
         selectedOptionId: entry.value,
       );
     }).toList();
-
-    final totalScore = selectedAnswers.entries.map((entry) {
-      final question = testData!['questions']
-          .firstWhere((q) => q['id'] == entry.key);
-      final option = question['options']
-          .firstWhere((opt) => opt['id'] == entry.value);
-      return option['scoreValue'] as int;
-    }).fold(0, (a, b) => a + b);
 
     final submission = TestSubmissionRequest(
       userId: userId,
@@ -149,177 +118,300 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+  void submitTest() {
+    final unanswered = testData!['questions']
+        .where((q) => !selectedAnswers.containsKey(q['id']))
+        .toList();
+    if (unanswered.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("⚠️ Bạn chưa trả lời ${unanswered.length} câu hỏi."),
+          backgroundColor: Colors.redAccent,
+        ),
       );
+      return;
     }
 
-    if (isError || testData == null) {
-      return const Scaffold(
-        body: Center(child: Text("Đã xảy ra lỗi khi tải dữ liệu.")),
+    totalScore = selectedAnswers.entries
+        .map((entry) {
+      final question = testData!['questions'].firstWhere(
+            (q) => q['id'] == entry.key,
       );
-    }
+      final option = question['options'].firstWhere(
+            (opt) => opt['id'] == entry.value,
+      );
+      return option['scoreValue'] as int;
+    })
+        .fold(0, (a, b) => a + b);
 
-    final question = testData!['questions'][currentQuestionIndex];
-    final totalQuestions = testData!['questions'].length;
+    setState(() => isFinished = true);
+    saveResult();
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(testData!['title'] ?? "Bài kiểm tra"),
-        centerTitle: true,
+  Widget questionListDialog() {
+    return Dialog(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        width: 300,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Danh sách câu hỏi",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: GridView.builder(
+                shrinkWrap: true,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 5,
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                ),
+                itemCount: testData!['questions'].length,
+                itemBuilder: (context, index) {
+                  final q = testData!['questions'][index];
+                  Color bgColor = Colors.white;
+                  if (selectedAnswers.containsKey(q['id'])) bgColor = Colors.green;
+                  if (markedForReview.contains(q['id'])) bgColor = Colors.purple;
+
+                  return GestureDetector(
+                    onTap: () {
+                      scrollToQuestion(index);
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.black12),
+                      ),
+                      child: Text("${q['questionOrder']}"),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Đóng"),
+            ),
+          ],
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width > 600 ? 700 : double.infinity,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  Widget buildQuestionCard(Map<String, dynamic> q) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: isFinished
-                    ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              Text(
+                "Câu ${currentQuestionIndex + 1}/${testData!['questions'].length}",
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              GestureDetector(
+                onTap: () => toggleMarkReview(q['id']),
+                child: Row(
                   children: [
-                    const Text("🎉 Kết quả của bạn:",
-                        style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 20),
-                    Text(getResultText(), style: const TextStyle(fontSize: 18)),
-                    const SizedBox(height: 30),
-                    ElevatedButton(
-                      onPressed: () => setState(() {
-                        currentQuestionIndex = 0;
-                        selectedAnswers.clear();
-                        totalScore = 0;
-                        isFinished = false;
-                      }),
-                      child: const Text("Làm lại"),
-                    ),
-                  ],
-                )
-                    : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 12),
-                    Text(
-                      "🧠 Tổng số câu: ${testData!['questions'].length}",
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 8),
-
-// ✅ Thanh điều hướng 5 số gần current
-                    Builder(
-                      builder: (context) {
-                        final totalQuestions = testData!['questions'].length;
-                        final start = (currentQuestionIndex - 2).clamp(0, totalQuestions - 5).toInt();
-                        final end = (start + 5).clamp(0, totalQuestions).toInt();
-
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(end - start, (i) {
-                            final index = start + i;
-                            final qId = testData!['questions'][index]['id'];
-                            final isSelected = selectedAnswers.containsKey(qId);
-                            final isCurrent = index == currentQuestionIndex;
-
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: SizedBox(
-                                width: 40,
-                                height: 40,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: isCurrent
-                                        ? Colors.teal
-                                        : (isSelected
-                                        ? Colors.blue.shade100
-                                        : Colors.red.shade100),
-                                    foregroundColor: Colors.black,
-                                    padding: EdgeInsets.zero,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      currentQuestionIndex = index;
-                                    });
-                                  },
-                                  child: Text('${index + 1}'),
-                                ),
-                              ),
-                            );
-                          }),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-
-                    const SizedBox(height: 16),
-
-                    LinearProgressIndicator(
-                      value: (currentQuestionIndex + 1) / totalQuestions,
-                      backgroundColor: Colors.grey[300],
-                      color: Colors.blue,
-                      minHeight: 8,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Câu ${currentQuestionIndex + 1}/$totalQuestions",
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(question['questionText'],
-                        style: const TextStyle(fontSize: 16)),
-                    const SizedBox(height: 20),
-                    ...List.generate(question['options'].length, (index) {
-                      final option = question['options'][index];
-                      return RadioListTile<int>(
-                        title: Text(option['optionText']),
-                        value: option['scoreValue'],
-                        groupValue: selectedAnswers[question['id']],
-                        onChanged: (value) {
-                          setState(() {
-                            selectedAnswers[question['id']] = value!;
-                          });
-                        },
-                      );
-                    }),
-                    const Spacer(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (currentQuestionIndex > 0)
-                          ElevatedButton(
-                            onPressed: previousQuestion,
-                            child: const Text("← Quay lại"),
-                          ),
-                        ElevatedButton(
-                          onPressed: nextQuestion,
-                          child: Text(currentQuestionIndex < totalQuestions - 1
-                              ? "Tiếp theo →"
-                              : "Xem kết quả"),
-                        ),
-                      ],
+                    const Text("Mark for review"),
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: markedForReview.contains(q['id'])
+                            ? Colors.purple
+                            : Colors.white,
+                        border: Border.all(color: Colors.purple),
+                      ),
                     ),
                   ],
                 ),
               ),
-              // Các widgets như Text, RadioListTile, ProgressBar...
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          Text(q['questionText'], style: const TextStyle(fontSize: 16)),
+          const SizedBox(height: 12),
+          ...List.generate(q['options'].length, (idx) {
+            final opt = q['options'][idx];
+            return RadioListTile<int>(
+              value: opt['id'],
+              groupValue: selectedAnswers[q['id']],
+              onChanged: (val) {
+                setState(() {
+                  selectedAnswers[q['id']] = val!;
+                });
+              },
+              title: Text(opt['optionText']),
+            );
+          }),
+        ],
       ),
+    );
+  }
 
+  Widget buildResultView() {
+    return Center(
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          const Text(
+            "🎉 Kết quả của bạn:",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            getResultText(),
+            style: const TextStyle(fontSize: 18),
+          ),
+          const SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                currentQuestionIndex = 0;
+                selectedAnswers.clear();
+                markedForReview.clear();
+                totalScore = 0;
+                isFinished = false;
+              });
+            },
+            child: const Text("Làm lại"),
+          ),
+        ],
+      ),
+    );
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (isError || testData == null) return const Scaffold(body: Center(child: Text("Đã xảy ra lỗi khi tải dữ liệu.")));
+
+    final totalQuestions = testData!['questions'].length;
+    final question = testData!['questions'][currentQuestionIndex];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(testData!['title'] ?? "Bài kiểm tra"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.list_alt),
+            onPressed: () => showDialog(context: context, builder: (_) => questionListDialog()),
+          ),
+        ],
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          bool isMobile = constraints.maxWidth < 600;
+
+          Widget mainContent = Expanded(
+            flex: 2,
+            child: isFinished
+                ? buildResultView()
+                : PageView.builder(
+              controller: pageController,
+              onPageChanged: (index) {
+                setState(() => currentQuestionIndex = index);
+              },
+              itemCount: totalQuestions,
+              itemBuilder: (context, index) {
+                return buildQuestionCard(testData!['questions'][index]);
+              },
+            ),
+          );
+
+          Widget sideBar = !isMobile
+              ? Expanded(
+            flex: 1,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              color: Colors.grey[100],
+              child: Column(
+                children: [
+                  Expanded(
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 5,
+                        mainAxisSpacing: 6,
+                        crossAxisSpacing: 6,
+                      ),
+                      itemCount: totalQuestions,
+                      itemBuilder: (context, index) {
+                        final q = testData!['questions'][index];
+                        Color bgColor = Colors.white;
+                        if (selectedAnswers.containsKey(q['id'])) bgColor = Colors.green;
+                        if (markedForReview.contains(q['id'])) bgColor = Colors.purple;
+
+                        return GestureDetector(
+                          onTap: () => scrollToQuestion(index),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: bgColor,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.black12),
+                            ),
+                            child: Text("${q['questionOrder']}"),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: submitTest,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      backgroundColor: Colors.orange,
+                    ),
+                    child: const Text(
+                      "NỘP BÀI",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+              : const SizedBox();
+
+          return Row(children: [mainContent, sideBar]);
+        },
+      ),
+      bottomNavigationBar: LayoutBuilder(
+        builder: (context, constraints) {
+          bool isMobile = constraints.maxWidth < 600;
+          if (isMobile) {
+            return Container(
+              padding: const EdgeInsets.all(12),
+              color: Colors.white,
+              child: ElevatedButton(
+                onPressed: submitTest,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  backgroundColor: Colors.orange,
+                ),
+                child: const Text(
+                  "NỘP BÀI",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            );
+          }
+          return const SizedBox();
+        },
+      ),
     );
   }
 }

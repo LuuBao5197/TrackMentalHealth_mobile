@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart' hide ChatMessage;
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:trackmentalhealth/core/constants/chat_api.dart';
-import 'package:trackmentalhealth/pages/chat/VideoCall.dart';
 import 'package:trackmentalhealth/pages/chat/utils/StompService.dart';
 import 'package:trackmentalhealth/pages/chat/utils/current_user_id.dart';
 
@@ -133,17 +132,17 @@ class _ChatDetailState extends State<ChatDetail> {
           IconButton(
             icon: const Icon(Icons.videocam_outlined,size: 35, color: Colors.white),
             onPressed: () {
-              Navigator.push(
-                context,
-                  MaterialPageRoute(
-                    builder: (_) => VideoCall(
-                      sessionId: widget.sessionId.toString(),
-                      currentUserId: currentUserId!,
-                      receiverId: widget.user['id'].toString(),
-                      receiverName: widget.user['fullname'],
-                    ),
-                  ),
-              );
+              // Navigator.push(
+              //   context,
+              //     MaterialPageRoute(
+              //       builder: (_) => VideoCall(
+              //         sessionId: widget.sessionId.toString(),
+              //         currentUserId: currentUserId!,
+              //         receiverId: widget.user['id'].toString(),
+              //         receiverName: widget.user['fullname'],
+              //       ),
+              //     ),
+              // );
             },
           ),
         ],
