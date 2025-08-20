@@ -4,6 +4,7 @@ import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:trackmentalhealth/core/constants/chat_api.dart';
 import 'package:trackmentalhealth/models/ChatGroup.dart';
+import 'package:trackmentalhealth/pages/chat/ChatVideoGroup.dart';
 import 'package:trackmentalhealth/pages/chat/utils/StompService.dart';
 import 'package:trackmentalhealth/pages/chat/utils/current_user_id.dart';
 import '../../models/ChatMessageGroup.dart';
@@ -172,12 +173,30 @@ class _ChatDetailGroupState extends State<ChatDetailGroup> {
               style: const TextStyle(color: Colors.white, fontSize: 18),
             ),
             Text(
-              "Creator: ${creatorName ?? 'USER'}", // creatorName từ API
+              "Creator: ${ creatorName ?? 'USER'}", // creatorName từ API
               style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
         ),
         actions: [
+          // Nút gọi video
+          IconButton(
+            icon: const Icon(Icons.videocam, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatVideoGroupPage(
+                    callID: "group_${widget.groupId}",  // mỗi group 1 callID
+                    userId: currentUserId ?? "0",
+                    userName: "User$currentUserId",
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // Dropdown danh sách thành viên
           PopupMenuButton<String>(
             icon: Row(
               children: [
@@ -201,7 +220,6 @@ class _ChatDetailGroupState extends State<ChatDetailGroup> {
                         backgroundImage: (user.avatar?.isNotEmpty ?? false)
                             ? NetworkImage(user.avatar!)
                             : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
-
                       ),
                       const SizedBox(width: 8),
                       Text(user.fullName!),
@@ -209,8 +227,6 @@ class _ChatDetailGroupState extends State<ChatDetailGroup> {
                   ),
                 );
               }).toList();
-
-
             },
           ),
         ],
