@@ -85,12 +85,9 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
   Future<void> saveResult() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt("userId");
-    final token = prefs.getString("token"); // nếu cần gửi kèm Authorization
+    final token = prefs.getString("token");
 
-    if (userId == null) {
-      debugPrint("❌ Không tìm thấy userId trong SharedPreferences");
-      return;
-    }
+    if (userId == null) return;
 
     final testId = testData!['id'];
 
@@ -108,7 +105,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
       answers: answers,
     );
 
-    final url = Uri.parse('${ApiConstants.baseUrl}/submitUserTestResult');
+    final url = Uri.parse('${ApiConstants.baseUrl}/test/submitUserTestResult');
 
     try {
       final response = await http.post(
@@ -160,17 +157,22 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
     saveResult();
   }
 
-  Widget questionListDialog() {
+  Widget questionListDialog(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
     return Dialog(
+      backgroundColor: isDark ? Colors.grey.shade900 : Colors.white,
       child: Container(
         padding: const EdgeInsets.all(12),
         width: 300,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               "Danh sách câu hỏi",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87),
             ),
             const SizedBox(height: 12),
             Flexible(
@@ -184,7 +186,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
                 itemCount: testData!['questions'].length,
                 itemBuilder: (context, index) {
                   final q = testData!['questions'][index];
-                  Color bgColor = Colors.white;
+                  Color bgColor = isDark ? Colors.grey.shade800 : Colors.white;
                   if (selectedAnswers.containsKey(q['id'])) bgColor = Colors.green;
                   if (markedForReview.contains(q['id'])) bgColor = Colors.purple;
 
@@ -200,7 +202,11 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: Colors.black12),
                       ),
-                      child: Text("${q['questionOrder']}"),
+                      child: Text(
+                        "${q['questionOrder']}",
+                        style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87),
+                      ),
                     ),
                   );
                 },
@@ -208,6 +214,8 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
             ),
             const SizedBox(height: 12),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange, foregroundColor: Colors.white),
               onPressed: () => Navigator.pop(context),
               child: const Text("Đóng"),
             ),
@@ -217,7 +225,8 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
     );
   }
 
-  Widget buildQuestionCard(Map<String, dynamic> q) {
+  Widget buildQuestionCard(Map<String, dynamic> q, Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -228,13 +237,17 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
             children: [
               Text(
                 "Câu ${currentQuestionIndex + 1}/${testData!['questions'].length}",
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87),
               ),
               GestureDetector(
                 onTap: () => toggleMarkReview(q['id']),
                 child: Row(
                   children: [
-                    const Text("Mark for review"),
+                    Text("Mark for review",
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
                     const SizedBox(width: 6),
                     Container(
                       width: 12,
@@ -243,6 +256,8 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
                         shape: BoxShape.circle,
                         color: markedForReview.contains(q['id'])
                             ? Colors.purple
+                            : isDark
+                            ? Colors.grey.shade900
                             : Colors.white,
                         border: Border.all(color: Colors.purple),
                       ),
@@ -253,7 +268,8 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
             ],
           ),
           const SizedBox(height: 12),
-          Text(q['questionText'], style: const TextStyle(fontSize: 16)),
+          Text(q['questionText'],
+              style: TextStyle(fontSize: 16, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 12),
           ...List.generate(q['options'].length, (idx) {
             final opt = q['options'][idx];
@@ -265,7 +281,10 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
                   selectedAnswers[q['id']] = val!;
                 });
               },
-              title: Text(opt['optionText']),
+              title: Text(opt['optionText'],
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
+              activeColor: Colors.orange,
+              tileColor: isDark ? Colors.grey.shade800 : Colors.white,
             );
           }),
         ],
@@ -273,22 +292,25 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
     );
   }
 
-  Widget buildResultView() {
+  Widget buildResultView(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
     return Center(
       child: Column(
         children: [
           const SizedBox(height: 20),
-          const Text(
+          Text(
             "🎉 Kết quả của bạn:",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
           ),
           const SizedBox(height: 16),
           Text(
             getResultText(),
-            style: const TextStyle(fontSize: 18),
+            style: TextStyle(fontSize: 18, color: isDark ? Colors.white : Colors.black87),
           ),
           const SizedBox(height: 30),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
             onPressed: () {
               setState(() {
                 currentQuestionIndex = 0;
@@ -307,19 +329,32 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+
     if (isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (isError || testData == null) return const Scaffold(body: Center(child: Text("Đã xảy ra lỗi khi tải dữ liệu.")));
+    if (isError || testData == null)
+      return Scaffold(
+        body: Center(
+            child: Text(
+              "Đã xảy ra lỗi khi tải dữ liệu.",
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+            )),
+      );
 
     final totalQuestions = testData!['questions'].length;
     final question = testData!['questions'][currentQuestionIndex];
 
     return Scaffold(
+      backgroundColor: isDark ? Colors.grey.shade900 : Colors.white,
       appBar: AppBar(
+        backgroundColor: isDark ? Colors.grey.shade900 : Colors.blue,
+        foregroundColor: isDark ? Colors.white : Colors.white,
         title: Text(testData!['title'] ?? "Bài kiểm tra"),
         actions: [
           IconButton(
             icon: const Icon(Icons.list_alt),
-            onPressed: () => showDialog(context: context, builder: (_) => questionListDialog()),
+            onPressed: () => showDialog(context: context, builder: (_) => questionListDialog(brightness)),
           ),
         ],
       ),
@@ -330,16 +365,14 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
           Widget mainContent = Expanded(
             flex: 2,
             child: isFinished
-                ? buildResultView()
+                ? buildResultView(brightness)
                 : PageView.builder(
               controller: pageController,
               onPageChanged: (index) {
                 setState(() => currentQuestionIndex = index);
               },
               itemCount: totalQuestions,
-              itemBuilder: (context, index) {
-                return buildQuestionCard(testData!['questions'][index]);
-              },
+              itemBuilder: (context, index) => buildQuestionCard(testData!['questions'][index], brightness),
             ),
           );
 
@@ -348,7 +381,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
             flex: 1,
             child: Container(
               padding: const EdgeInsets.all(12),
-              color: Colors.grey[100],
+              color: isDark ? Colors.grey.shade800 : Colors.grey[100],
               child: Column(
                 children: [
                   Expanded(
@@ -361,7 +394,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
                       itemCount: totalQuestions,
                       itemBuilder: (context, index) {
                         final q = testData!['questions'][index];
-                        Color bgColor = Colors.white;
+                        Color bgColor = isDark ? Colors.grey.shade700 : Colors.white;
                         if (selectedAnswers.containsKey(q['id'])) bgColor = Colors.green;
                         if (markedForReview.contains(q['id'])) bgColor = Colors.purple;
 
@@ -374,7 +407,8 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(color: Colors.black12),
                             ),
-                            child: Text("${q['questionOrder']}"),
+                            child: Text("${q['questionOrder']}",
+                                style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
                           ),
                         );
                       },
@@ -407,7 +441,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
           if (isMobile) {
             return Container(
               padding: const EdgeInsets.all(12),
-              color: Colors.white,
+              color: isDark ? Colors.grey.shade900 : Colors.white,
               child: ElevatedButton(
                 onPressed: submitTest,
                 style: ElevatedButton.styleFrom(
@@ -427,3 +461,4 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
     );
   }
 }
+
