@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/mood_api.dart'; // <-- Đảm bảo đường dẫn đúng!
+import '../../core/constants/mood_api.dart';
+import 'mood_history_page.dart'; // <-- Đảm bảo đường dẫn đúng!
 
 class HeroPage extends StatefulWidget {
   const HeroPage({super.key});
@@ -204,6 +205,19 @@ class _HeroPageState extends State<HeroPage> {
                   textStyle: const TextStyle(fontSize: 16),
                 ),
               ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () {
+                  // Khi bấm nút sẽ chuyển sang trang MoodHistoryPage
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MoodHistoryPage()),
+                  );
+
+                },
+                child: const Text("📅 Xem lịch sử Mood"),
+              ),
+
             ],
           ),
         ),
