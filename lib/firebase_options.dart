@@ -53,7 +53,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAgCiFoKYpQfFM5DKKvbgRZYqLf3dKkAyU',
+    apiKey: '+',
     appId: '1:627029589530:android:9c7ad4835cc205f4a4dba3',
     messagingSenderId: '627029589530',
     projectId: 'trackmentalhealth-mobile',

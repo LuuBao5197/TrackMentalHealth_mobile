@@ -3,21 +3,22 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
-import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
+// import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/content/permissions.dart';
 
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
-import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
+import 'package:trackmentalhealth/pages/diary/diary_history_page.dart';
+import 'package:trackmentalhealth/pages/diary/write_diary_page.dart';
 import 'package:trackmentalhealth/pages/home/HeroPage.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
+import 'package:trackmentalhealth/pages/home/mood_history_page.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
@@ -30,7 +31,9 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  // await Firebase.initializeApp(
+  //   options: DefaultFirebaseOptions.currentPlatform,
+  // );
   // Gọi xin quyền trước khi vào app
   await requestAppPermissions();
 
@@ -74,6 +77,11 @@ class TrackMentalHealthApp extends StatelessWidget {
         ),
       ),
       home: const LoginPage(),
+      routes: {
+        '/hero': (context) => const HeroPage(),
+        '/mood-history': (context) => const MoodHistoryPage(),
+        '/history': (context) => const DiaryHistoryPage(),
+      },
     );
   }
 }
@@ -97,11 +105,12 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     HeroPage(),
     const TestScreen(),
-    const DiaryScreen(),
+    const WriteDiaryPage(),
     const BlogScreen(),
-    const ChatScreen(),
+    const BlogScreen(),   // const ChatScreen(),
     const ProfileScreen(),
     const ContentTabScreen(),
+
   ];
 
   void _onTabTapped(int index) {

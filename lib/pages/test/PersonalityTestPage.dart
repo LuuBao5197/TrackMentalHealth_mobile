@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/api_constants.dart';
 import '../../models/AnswerRequest.dart';
@@ -82,7 +83,15 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
   }
 
   Future<void> saveResult() async {
-    final userId = 1; // Hoặc lấy từ token/session
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt("userId");
+    final token = prefs.getString("token"); // nếu cần gửi kèm Authorization
+
+    if (userId == null) {
+      debugPrint("❌ Không tìm thấy userId trong SharedPreferences");
+      return;
+    }
+
     final testId = testData!['id'];
 
     final answers = selectedAnswers.entries.map((entry) {
@@ -99,12 +108,15 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
       answers: answers,
     );
 
-    final url = Uri.parse('${ApiConstants.baseUrl}/test-result');
+    final url = Uri.parse('${ApiConstants.baseUrl}/submitUserTestResult');
 
     try {
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: json.encode(submission.toJson()),
       );
 
