@@ -3,13 +3,11 @@
     "project_number": "627029589530",
     "project_id": "trackmentalhealth-mobile",
     "storage_bucket": "trackmentalhealth-mobile.firebasestorage.app"
-
   },
   "client": [
     {
       "client_info": {
         "mobilesdk_app_id": "1:627029589530:android:9c7ad4835cc205f4a4dba3",
-
         "android_client_info": {
           "package_name": "com.example.trackmentalhealth"
         }
@@ -24,6 +22,14 @@
           }
         },
         {
+          "client_id": "627029589530-s8pacj937qoher0k59n9k79h5tbo13hv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.trackmentalhealth",
+            "certificate_hash": "168800037030276134273558f4c890889ec56996"
+          }
+        },
+        {
           "client_id": "627029589530-hrq3hoe95k7klcf5md78ehq2rss77ns4.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -31,7 +37,6 @@
       "api_key": [
         {
           "current_key": "AIzaSyAgCiFoKYpQfFM5DKKvbgRZYqLf3dKkAyU"
-
         }
       ],
       "services": {
@@ -42,7 +47,6 @@
               "client_type": 3
             }
           ]
-
         }
       }
     }

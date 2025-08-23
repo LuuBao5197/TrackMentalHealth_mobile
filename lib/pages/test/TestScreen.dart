@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/pages/test/TestHistoryScreen.dart';
 import '../../core/constants/api_constants.dart';
 import '../../models/test_model.dart';
 import 'TestDetailScreen.dart';
 
 class TestScreen extends StatefulWidget {
   const TestScreen({super.key});
-
   @override
   State<TestScreen> createState() => _TestScreenState();
 }
@@ -16,16 +17,35 @@ class _TestScreenState extends State<TestScreen> {
   List<TestModel> _tests = [];
   bool _loading = true;
   int _page = 1;
-  int _pageSize = 2;
+  int _pageSize = 3;
   int _totalPages = 1;
   String _search = '';
   final TextEditingController _searchController = TextEditingController();
+
+  int? _userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserId();
+    fetchTests(page: _page);
+  }
+
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getInt("userId");
+    setState(() {
+      _userId = id;
+    });
+  }
 
   Future<void> fetchTests({int page = 1, String search = ''}) async {
     setState(() => _loading = true);
     try {
       final response = await http.get(
-        Uri.parse('${ApiConstants.getTests}?page=$page&size=$_pageSize&search=$search'),
+        Uri.parse(
+          '${ApiConstants.getTests}?page=$page&size=$_pageSize&search=$search',
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -40,18 +60,14 @@ class _TestScreenState extends State<TestScreen> {
         throw Exception('Failed to load tests');
       }
     } catch (e) {
-      print(e);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Lỗi khi tải dữ liệu')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lỗi khi tải dữ liệu')),
+        );
+      }
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    fetchTests(page: _page);
   }
 
   void _onPageChange(int newPage) {
@@ -76,8 +92,29 @@ class _TestScreenState extends State<TestScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('🧠 Mental Health Tests')),
+      appBar: AppBar(
+        title: const Text('🧠 Mental Health Tests'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history_toggle_off),
+            tooltip: 'View History',
+            onPressed: _userId == null
+                ? null
+                : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      TestHistoryScreen(userId: _userId!),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -93,7 +130,11 @@ class _TestScreenState extends State<TestScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
                     ),
                   ),
                 ),
@@ -104,6 +145,7 @@ class _TestScreenState extends State<TestScreen> {
                   label: const Text('Search'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ],
@@ -112,65 +154,190 @@ class _TestScreenState extends State<TestScreen> {
 
             // Content
             _loading
-                ? const Expanded(child: Center(child: CircularProgressIndicator()))
+                ? const Expanded(
+              child: Center(child: CircularProgressIndicator()),
+            )
                 : _tests.isEmpty
-                ? const Expanded(child: Center(child: Text('Không có bài test nào')))
+                ? const Expanded(
+              child: Center(child: Text('Không có bài test nào')),
+            )
                 : Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.8,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
-                itemCount: _tests.length,
-                itemBuilder: (context, index) {
-                  final test = _tests[index];
-                  return Card(
-                    elevation: 3,
-                    shadowColor: Colors.black12,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  bool isLandscape =
+                      constraints.maxWidth > constraints.maxHeight;
+
+                  return GridView.builder(
+                    gridDelegate:
+                    SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: isLandscape ? 3 : 2,
+                      childAspectRatio: isLandscape ? 1.2 : 0.8,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            test.title,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            test.description.length > 100
-                                ? '${test.description.substring(0, 100)}...'
-                                : test.description,
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                          const Spacer(),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    itemCount: _tests.length,
+                    itemBuilder: (context, index) {
+                      final test = _tests[index];
+
+                      return Card(
+                        elevation: 3,
+                        shadowColor: isDark
+                            ? Colors.black45
+                            : Colors.teal.withOpacity(0.3),
+                        color: isDark
+                            ? Colors.grey.shade900
+                            : Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                              color: isDark
+                                  ? Colors.grey.shade700
+                                  : Colors.transparent),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
                             children: [
-                              ElevatedButton.icon(
-                                onPressed: () => _handleDoTest(test.id),
-                                icon: const Icon(Icons.edit, size: 16),
-                                label: const Text('Do Test'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 6),
-                                  textStyle: const TextStyle(fontSize: 12),
+                              // Title
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.assignment_outlined,
+                                    size: 18,
+                                    color:
+                                    isDark ? Colors.tealAccent : Colors.teal,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      test.title,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black87,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Description
+                              Tooltip(
+                                message: test.description,
+                                textStyle: TextStyle(
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black87),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.grey.shade800
+                                      : Colors.white,
+                                  borderRadius:
+                                  BorderRadius.circular(6),
+                                  border: Border.all(
+                                      color: isDark
+                                          ? Colors.grey.shade700
+                                          : Colors.transparent),
+                                ),
+                                child: Text(
+                                  test.description,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.grey.shade200
+                                        : Colors.black54,
+                                    fontSize: 13,
+                                  ),
+                                  maxLines: isLandscape ? 2 : 3,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              const SizedBox(height: 8),
+
+                              // Do Test button
+                              if (isLandscape)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () =>
+                                        _handleDoTest(test.id),
+                                    icon: const Icon(
+                                      Icons.psychology_alt,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                    label: const Text('Do Test'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.teal,
+                                      foregroundColor: Colors.white,
+                                      padding:
+                                      const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                        BorderRadius.circular(30),
+                                      ),
+                                      shadowColor: isDark
+                                          ? Colors.black54
+                                          : Colors.teal
+                                          .withOpacity(0.3),
+                                    ),
+                                  ),
+                                ),
+                              if (!isLandscape) ...[
+                                const Spacer(),
+                                Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () =>
+                                        _handleDoTest(test.id),
+                                    icon: const Icon(
+                                      Icons.psychology_alt,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                    label: const Text('Do Test'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.teal,
+                                      foregroundColor: Colors.white,
+                                      padding:
+                                      const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      textStyle: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                        BorderRadius.circular(30),
+                                      ),
+                                      shadowColor: isDark
+                                          ? Colors.black54
+                                          : Colors.teal
+                                          .withOpacity(0.3),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
@@ -183,12 +350,19 @@ class _TestScreenState extends State<TestScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back_ios),
-                    onPressed: _page > 1 ? () => _onPageChange(_page - 1) : null,
+                    onPressed:
+                    _page > 1 ? () => _onPageChange(_page - 1) : null,
                   ),
-                  Text('Page $_page of $_totalPages'),
+                  Text(
+                    'Page $_page of $_totalPages',
+                    style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.arrow_forward_ios),
-                    onPressed: _page < _totalPages ? () => _onPageChange(_page + 1) : null,
+                    onPressed: _page < _totalPages
+                        ? () => _onPageChange(_page + 1)
+                        : null,
                   ),
                 ],
               ),
