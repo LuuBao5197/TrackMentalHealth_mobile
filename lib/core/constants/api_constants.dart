@@ -1,8 +1,9 @@
 class ApiConstants {
   // Base URL có thể đổi 1 nơi duy nhất ở đây
 
-  static const String ipLocal = '192.168.1.8';
+  static const String ipLocal = '192.168.1.5';
   static const String baseUrl = 'http://' + ipLocal + ':9999/api';
+
   // Ví dụ: các endpoint cụ thể
   static const String login = baseUrl + '/users/login';
   static const String register = baseUrl + '/users/register';
@@ -18,6 +19,4 @@ class ApiConstants {
   static const String getExercises = '$baseUrl/exercise/';
   static const String getArticles = '$baseUrl/article/';
 
-  //chat api
-  static const String getChatSessionByUserId = '$baseUrl/chat/session';
 }

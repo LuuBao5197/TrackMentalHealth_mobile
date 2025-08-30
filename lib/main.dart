@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
+import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 // import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/content/permissions.dart';
 
@@ -103,9 +104,10 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const HeroPage(),
     const TestScreen(),
+
     const WriteDiaryPage(),
     const BlogScreen(),
-    const BlogScreen(), // ChatScreen placeholder
+    const ChatScreen(), // ChatScreen placeholder
     const ProfileScreen(),
     const ContentTabScreen(),
   ];
