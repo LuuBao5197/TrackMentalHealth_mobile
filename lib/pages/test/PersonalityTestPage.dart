@@ -70,7 +70,6 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
     pageController.jumpToPage(index);
     setState(() => currentQuestionIndex = index);
   }
-
   String getResultText() {
     final results = testData!['results'];
     for (var result in results) {
@@ -460,5 +459,8 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
       ),
     );
   }
+
+
 }
+
 
