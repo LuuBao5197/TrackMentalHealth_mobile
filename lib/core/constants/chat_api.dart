@@ -231,20 +231,18 @@ Future<dynamic> saveNotification(Map<String, dynamic> data) async {
   }
 }
 
-Future<dynamic> changeStatusNotification(int id) async {
+Future<void> changeStatusNotification(int id) async {
   final res = await http.put(Uri.parse('${notificationUrl}/changestatus/$id'));
-  if (res.statusCode == 200) {
-    return jsonDecode(res.body);
-  } else {
-    throw Exception('Failed to change notification status');
+
+  if (res.statusCode != 200) {
+    throw Exception('Failed to change notification status: ${res.statusCode}');
   }
 }
 
+
 Future<dynamic> deleteNotificationById(int id) async {
   final res = await http.delete(Uri.parse('${notificationUrl}/delete/$id'));
-  if (res.statusCode == 200) {
-    return jsonDecode(res.body);
-  } else {
+  if (res.statusCode != 200) {
     throw Exception('Failed to delete notification');
   }
 }

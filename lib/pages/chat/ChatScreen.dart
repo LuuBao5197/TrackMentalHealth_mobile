@@ -164,68 +164,85 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Messenger'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.teal,
+        title: const Text(
+          'Messenger',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        // màu theo theme (light/dark)
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.primary,
+        elevation: 1,
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: OutlinedButton(
+            child: OutlinedButton.icon(
               onPressed: () async {
                 final userId = await UserSession.getUserId();
                 if (userId == null) {
                   print("User ID chưa có");
                   return;
                 }
-
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => AppointmentPage(userId: userId),
                   ),
                 );
-              }
-              ,
-
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.teal),
-                foregroundColor: Colors.teal,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+              },
+              icon: Icon(Icons.calendar_today, size: 16, color: Theme.of(context).colorScheme.primary),
+              label: Text(
+                'My Appointment',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
-              child: const Text(
-                'My Appointment',
-                style: TextStyle(fontSize: 12),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                foregroundColor: Theme.of(context).colorScheme.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: OutlinedButton(
+            child: OutlinedButton.icon(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const PublicCallPage(paramRoomID:"0000"),
+                    builder: (context) => const PublicCallPage(paramRoomID: "0000"),
                   ),
-                );              },
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.teal),
-                foregroundColor: Colors.teal,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                );
+              },
+              icon: Icon(Icons.call, size: 16, color: Theme.of(context).colorScheme.primary),
+              label: Text(
+                'Public Call',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
-              child: const Text('Public Call', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                foregroundColor: Theme.of(context).colorScheme.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
             ),
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.teal,
+          labelColor: Theme.of(context).colorScheme.primary,
+          indicatorColor: Theme.of(context).colorScheme.primary,
           tabs: const [
             Tab(text: 'User'),
             Tab(text: 'Psychologist'),
@@ -242,84 +259,173 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             itemCount: sessions.length,
             itemBuilder: (_, index) {
               final session = sessions[index];
-              final isCurrentUserSender =
-                  session['sender']['id'] == currentUserId;
-              final otherUser = isCurrentUserSender
-                  ? session['receiver']
-                  : session['sender'];
+              final isCurrentUserSender = session['sender']['id'] == currentUserId;
+              final otherUser =
+              isCurrentUserSender ? session['receiver'] : session['sender'];
               final lastMsg = lastestMessages[session['id']];
               final unread = unreadStatus[session['id']] ?? false;
 
-              return ListTile(
-                leading: Stack(
-                  children: [
-                    CircleAvatar(
-                      backgroundImage: NetworkImage(otherUser['avatar'] ?? ''),
-                      radius: 24, // điều chỉnh size nếu muốn
-                    ),
-                    if (unread)
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+              return Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                color: Theme.of(context).cardColor,
+                elevation: 2,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => handleClick(session),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        // Avatar + chấm unread
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              backgroundImage: (otherUser['avatar'] != null &&
+                                  otherUser['avatar'].isNotEmpty)
+                                  ? NetworkImage(otherUser['avatar'])
+                                  : null,
+                              radius: 28,
+                              child: (otherUser['avatar'] == null ||
+                                  otherUser['avatar'].isEmpty)
+                                  ? const Icon(Icons.person, size: 28)
+                                  : null,
+                            ),
+                            if (unread)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  width: 14,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Theme.of(context).scaffoldBackgroundColor,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+
+                        // Nội dung
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Tên
+                              Text(
+                                otherUser['fullname'] ?? 'No Name',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: unread
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).textTheme.bodyLarge?.color,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+
+                              // Tin nhắn cuối
+                              Text(
+                                lastMsg?.message ?? '',
+                                style: TextStyle(
+                                  fontWeight:
+                                  unread ? FontWeight.w600 : FontWeight.normal,
+                                  color: unread
+                                      ? Theme.of(context).colorScheme.onSurface
+                                      : Theme.of(context).textTheme.bodyMedium?.color,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                  ],
-                ),
-                title: Text(
-                  otherUser['fullname'] ?? 'No Name',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 17, // có thể điều chỉnh size
+
+                        const SizedBox(width: 8),
+
+                        // Thời gian
+                        if (lastMsg != null)
+                          Text(
+                            DateFormat('HH:mm').format(lastMsg.timestamp),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-                subtitle: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        lastMsg?.message ?? '',
-                        style: TextStyle(
-                          fontWeight: unread
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (lastMsg != null)
-                      Text(
-                        DateFormat('HH:mm').format(lastMsg.timestamp),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                  ],
-                ),
-                onTap: () => handleClick(session),
               );
             },
           ),
-
           // Psychologist Chat
           ListView.builder(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
             itemCount: psychologists.length,
             itemBuilder: (_, index) {
               final psy = psychologists[index];
-              return ListTile(
-                title: Text(psy.usersID?.fullName ?? 'No name'),
-                trailing: ElevatedButton(
-                  onPressed: () => chatWithPsychologist(psy.usersID!.id!),
-                  child: const Text("Chat"),
+
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 2,
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: CircleAvatar(
+                    radius: 26,
+                    backgroundImage: NetworkImage(
+                      psy.usersID?.avatar ?? "https://via.placeholder.com/150",
+                    ),
+                  ),
+                  title: Text(
+                    psy.usersID?.fullName ?? 'No name',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  trailing: ElevatedButton.icon(
+                    onPressed: () => chatWithPsychologist(psy.usersID!.id!),
+                    icon: const Icon(
+                      Icons.chat_bubble_outline,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      "Chat",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20), // bo góc tròn
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      elevation: 3,
+                    ),
+                  ),
                 ),
               );
             },
@@ -327,72 +433,141 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
           // Groups
           ListView(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
             children: [
+              // Header My Groups
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     "My Groups (${myGroup.length})",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
-                  ElevatedButton(
+                  ElevatedButton.icon(
                     onPressed: handleOpenCreate,
-                    child: const Text("Create Group"),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text("Create"),
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+
+              // Danh sách group của tôi
               ...myGroup.map((grp) {
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: NetworkImage(grp['avt'] ?? ''),
+                return Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  title: Text(grp['name'] ?? 'No name'),
-                  subtitle: Text(grp['des'] ?? ''),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () => handleEditGroup(grp),
-                        icon: const Icon(Icons.edit),
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  elevation: 2,
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      radius: 26,
+                      backgroundImage: NetworkImage(grp['avt'] ?? ''),
+                    ),
+                    title: Text(
+                      grp['name'] ?? 'No name',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
-                      IconButton(
-                        onPressed: () => handleDeleteGroup(grp['id']),
-                        icon: const Icon(Icons.delete),
-                      ),
-                    ],
-                  ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatDetailGroup(
-                        groupId: grp['id'],
-                        groupName: grp['name'],
+                    ),
+                    subtitle: Text(
+                      grp['des'] ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                    trailing: Wrap(
+                      spacing: 4,
+                      children: [
+                        IconButton(
+                          onPressed: () => handleEditGroup(grp),
+                          icon: const Icon(
+                            Icons.edit,
+                            color: Colors.blueAccent,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => handleDeleteGroup(grp['id']),
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.redAccent,
+                          ),
+                        ),
+                      ],
+                    ),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatDetailGroup(
+                          groupId: grp['id'],
+                          groupName: grp['name'],
+                        ),
                       ),
                     ),
                   ),
                 );
               }).toList(),
-              const Divider(),
+
+              const Divider(height: 32),
+
+              // Header All Groups
               Text(
                 "All Groups (${group.length})",
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
+              const SizedBox(height: 8),
+
+              // Danh sách tất cả group
               ...group.map((grp) {
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: NetworkImage(grp['avt'] ?? ''),
+                return Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  title: Text(
-                    "${grp['name']} (${grp['createdBy']?['fullname'] ?? ''})",
-                  ),
-                  subtitle: Text(grp['des'] ?? ''),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatDetailGroup(
-                        groupId: grp['id'],
-                        groupName: grp['name'],
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  elevation: 1,
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      radius: 24,
+                      backgroundImage: NetworkImage(grp['avt'] ?? ''),
+                    ),
+                    title: Text(
+                      grp['name'] ?? 'No name',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    subtitle: Text(
+                      "${grp['des'] ?? ''} \nBy ${grp['createdBy']?['fullname'] ?? ''}",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                    isThreeLine: true,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatDetailGroup(
+                          groupId: grp['id'],
+                          groupName: grp['name'],
+                        ),
                       ),
                     ),
                   ),
@@ -408,7 +583,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           MaterialPageRoute(builder: (_) => ChatAI()),
         ),
         backgroundColor: Colors.teal,
-        child: const Icon(Icons.mark_chat_unread_outlined),
+        child: const Icon(Icons.mark_chat_unread_outlined, color: Colors.white),
       ),
     );
   }

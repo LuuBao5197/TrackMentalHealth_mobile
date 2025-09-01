@@ -1545,10 +1545,10 @@ packages:
     dependency: transitive
     description:
       name: zego_uikit
-      sha256: bbbfa1edde34cb508d294c3fa394f4442f5b9534b543c5e3c942f62d6b5bf457
+      sha256: fff35f169698aac04ade35d1ec5ae183e75c8c329b344dad47293db72d7fadf2
       url: "https://pub.dev"
     source: hosted
-    version: "2.28.24"
+    version: "2.28.25"
   zego_uikit_prebuilt_call:
     dependency: "direct main"
     description:

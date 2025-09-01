@@ -21,6 +21,7 @@ import 'package:trackmentalhealth/pages/home/HeroPage.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
 import 'package:trackmentalhealth/pages/home/mood_history_page.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
+import 'package:trackmentalhealth/pages/notification/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
 import 'package:trackmentalhealth/pages/content/ContentTabScreen.dart';
@@ -104,13 +105,13 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const HeroPage(),
     const TestScreen(),
-
     const WriteDiaryPage(),
     const BlogScreen(),
     const ChatScreen(), // ChatScreen placeholder
-    const ProfileScreen(),
+    const NotificationScreen(),
     const ContentTabScreen(),
   ];
+
 
   @override
   void initState() {
@@ -195,7 +196,7 @@ class _MainScreenState extends State<MainScreen> {
                   NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
                   NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
                   NavigationRailDestination(icon: Icon(Icons.messenger_outline_rounded), label: Text("Chat")),
-                  NavigationRailDestination(icon: Icon(Icons.person), label: Text("Profile")),
+                  NavigationRailDestination(icon: Icon(Icons.notifications_active), label: Text("Notice")),
                   NavigationRailDestination(icon: Icon(Icons.menu_book), label: Text("Content")),
                 ],
               ),
@@ -225,7 +226,7 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
           BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
           BottomNavigationBarItem(icon: Icon(Icons.messenger_outline_rounded), label: 'Chat'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.notifications_active), label: 'Notice'),
           BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Content'),
         ],
       ),

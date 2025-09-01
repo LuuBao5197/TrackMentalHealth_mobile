@@ -29,7 +29,7 @@ class _PublicCallPageState extends State<PublicCallPage> {
     userName = "Guest ${userID.substring(userID.length - 4)}";
   }
 
-  void _confirmExit() async {
+  Future<bool> _confirmExit() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -48,23 +48,44 @@ class _PublicCallPageState extends State<PublicCallPage> {
       ),
     );
 
-    if (confirm == true) {
-      Navigator.pop(context); // hoặc Navigator.pushReplacementNamed(context, "/user/chat/list")
-    }
+    return confirm ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: ZegoUIKitPrebuiltVideoConference(
-          appID: ZegoService.appID, // lấy từ ZEGOCLOUD console
-          appSign: ZegoService.appSign, // lấy từ ZEGOCLOUD console
-          conferenceID: roomID,
-          userID: userID,
-          userName: userName,
-          config: ZegoUIKitPrebuiltVideoConferenceConfig(),
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SizedBox(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: ZegoUIKitPrebuiltVideoConference(
+              appID: ZegoService.appID,
+              appSign: ZegoService.appSign,
+              conferenceID: roomID,
+              userID: userID,
+              userName: userName,
+              config: ZegoUIKitPrebuiltVideoConferenceConfig(
+                topMenuBarConfig: ZegoTopMenuBarConfig(
+                  isVisible: false,
+                ),
+                bottomMenuBarConfig: ZegoBottomMenuBarConfig(
+                  buttons: [
+                    ZegoMenuBarButtonName.toggleMicrophoneButton,
+                    ZegoMenuBarButtonName.toggleCameraButton,
+                    ZegoMenuBarButtonName.switchCameraButton,
+                    ZegoMenuBarButtonName.chatButton,
+                    ZegoMenuBarButtonName.leaveButton, // Nút thoát xuống dưới
+                  ],
+                ),
+                // 👉 Thêm xác nhận trước khi thoát
+                onLeaveConfirmation: (context) async {
+                  return await _confirmExit();
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }
