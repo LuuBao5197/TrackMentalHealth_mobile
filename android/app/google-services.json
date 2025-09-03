@@ -3,13 +3,11 @@
     "project_number": "627029589530",
     "project_id": "trackmentalhealth-mobile",
     "storage_bucket": "trackmentalhealth-mobile.firebasestorage.app"
-
   },
   "client": [
     {
       "client_info": {
         "mobilesdk_app_id": "1:627029589530:android:9c7ad4835cc205f4a4dba3",
-
         "android_client_info": {
           "package_name": "com.example.trackmentalhealth"
         }
@@ -39,7 +37,6 @@
       "api_key": [
         {
           "current_key": "AIzaSyAgCiFoKYpQfFM5DKKvbgRZYqLf3dKkAyU"
-
         }
       ],
       "services": {
@@ -50,7 +47,6 @@
               "client_type": 3
             }
           ]
-
         }
       }
     }

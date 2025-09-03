@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.trackmentalhealth"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.trackmentalhealth"
@@ -28,7 +28,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "21"
     }
 
     buildTypes {
