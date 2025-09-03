@@ -2,11 +2,10 @@ import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
@@ -14,7 +13,6 @@ import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/content/permissions.dart';
 
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
-import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
 import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
 import 'package:trackmentalhealth/pages/home/HeroPage.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
@@ -27,26 +25,26 @@ import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  void main() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Gọi xin quyền trước khi vào app
-  await requestAppPermissions();
+    // Gọi xin quyền trước khi vào app
+    await requestAppPermissions();
 
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
-      child: const TrackMentalHealthApp(),
-    ),
-  );
+    runApp(
+      ChangeNotifierProvider(
+        create: (_) => ThemeProvider(),
+        child: const TrackMentalHealthApp(),
+      ),
+    );
+  }
 }
-
 class TrackMentalHealthApp extends StatelessWidget {
   const TrackMentalHealthApp({super.key});
 

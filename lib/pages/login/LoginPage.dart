@@ -9,7 +9,6 @@ import 'package:trackmentalhealth/main.dart';
 import 'package:trackmentalhealth/models/User.dart' as model;
 import 'package:trackmentalhealth/pages/login/ForgotPasswordPage.dart';
 import 'package:trackmentalhealth/pages/login/RegisterPage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 
 class LoginPage extends StatefulWidget {
@@ -73,12 +72,11 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // Send idToken to backend
+      // Gọi backend API thay vì Firebase
       final response = await http.post(
-        Uri.parse("${ApiConstants.baseUrl}/auth/oauth/google?idToken=$idToken"),
+        Uri.parse(ApiConstants.loginWithGoogle),
+        body: {'idToken': idToken},
       );
-
-      print("Google login API response: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -87,15 +85,11 @@ class _LoginPageState extends State<LoginPage> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.clear();
         await prefs.setString('token', data['token']);
-        await prefs.setInt('userId', user['id']); // nằm trong user
+        await prefs.setInt('userId', user['id']);
         await prefs.setString('fullname', user['fullname']);
         await prefs.setString('avatar', user['avatar'] ?? '');
         await prefs.setString('role', user['role']);
         await prefs.setString('email', user['email']);
-
-        // Extract email from JWT token
-        final decodedToken = JwtDecoder.decode(data['token']);
-        await prefs.setString('email', decodedToken['sub']);
 
         if (!mounted) return;
         Navigator.pushReplacement(
@@ -105,10 +99,9 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         final msg = _getErrorMessage(response);
         setState(() => _error = msg);
-        //Clear sạch dữ liệu cũ
+
         final prefs = await SharedPreferences.getInstance();
         await prefs.clear();
-        await FirebaseAuth.instance.signOut();
         final googleSignIn = GoogleSignIn();
         if (await googleSignIn.isSignedIn()) {
           await googleSignIn.signOut();
@@ -121,6 +114,7 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _isLoading = false);
     }
   }
+
 
   void parseToken(String token) {
     Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
@@ -267,21 +261,40 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Column(
                     children: [
-                      IconButton(
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          minimumSize: const Size(double.infinity, 50),
+                          side: const BorderSide(color: Colors.grey),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                         onPressed: _signInWithGoogle,
-                        icon: const Icon(Icons.email_outlined, color: Colors.blue),
-                        iconSize: 40,
-                        tooltip: 'Login with Google',
+                        icon: Image.asset(
+                          'assets/google_logo.png',
+                          height: 24,
+                        ),
+                        label: const Text("Sign in with Google"),
                       ),
-                      const SizedBox(width: 18),
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.facebook_outlined, color: Colors.blue),
-                        iconSize: 40,
-                        tooltip: 'Login with Facebook',
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[800],
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          // TODO: login với Facebook
+                        },
+                        icon: const Icon(Icons.facebook),
+                        label: const Text("Sign in with Facebook"),
                       ),
                     ],
                   ),
