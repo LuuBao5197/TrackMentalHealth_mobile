@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../helper/UserSession.dart';
 import '../../models/Psychologist.dart';
@@ -137,23 +140,457 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
-  void handleOpenCreate() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Open create group modal")));
+  void handleOpenCreate(BuildContext context, Function _fetchData) {
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController desController = TextEditingController();
+    File? selectedImage;
+
+    Future<void> pickImage() async {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        selectedImage = File(image.path);
+      }
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Tiêu đề
+                      Row(
+                        children: const [
+                          Icon(Icons.group_add, color: Colors.blue, size: 28),
+                          SizedBox(width: 8),
+                          Text(
+                            "Create Group",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Avatar picker
+                      InkWell(
+                        onTap: () async {
+                          await pickImage();
+                          setState(() {});
+                        },
+                        child: CircleAvatar(
+                          radius: 45,
+                          backgroundColor: Colors.blue[50],
+                          backgroundImage: selectedImage != null
+                              ? FileImage(selectedImage!)
+                              : null,
+                          child: selectedImage == null
+                              ? const Icon(
+                            Icons.camera_alt,
+                            size: 32,
+                            color: Colors.blueGrey,
+                          )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Group name
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          labelText: "Group Name",
+                          prefixIcon: const Icon(Icons.text_fields),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+
+                      // Description
+                      TextField(
+                        controller: desController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: "Description",
+                          prefixIcon: const Icon(Icons.description),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+
+                      // Action buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              "Cancel",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.check),
+                            label: const Text("Create"),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () async {
+                              if (nameController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Group name is required"),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final payload = {
+                                "name": nameController.text.trim(),
+                                "des": desController.text.trim(),
+                                "maxMember": 100,
+                                "createdBy": { "id": currentUserId },
+                              };
+                              try {
+                                await createNewGroup(payload, selectedImage);
+
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      "Group '${payload['name']}' created successfully!",
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+
+                                _fetchData();
+                              } catch (e) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content:
+                                    Text("Failed to create group: $e"),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
-  void handleEditGroup(Map<String, dynamic> grp) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("Edit group ${grp['id']}")));
+  void handleEditGroup(
+      BuildContext context, Map<String, dynamic> grp, Function _fetchData)
+  {
+    final TextEditingController nameController =
+    TextEditingController(text: grp['name'] ?? '');
+    final TextEditingController desController =
+    TextEditingController(text: grp['des'] ?? '');
+    File? selectedImage;
+    String? currentImage = grp['avt']; // ảnh hiện tại từ backend
+
+    Future<void> pickImage() async {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        selectedImage = File(image.path);
+      }
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Title
+                      Row(
+                        children: const [
+                          Icon(Icons.edit, color: Colors.blue, size: 28),
+                          SizedBox(width: 8),
+                          Text(
+                            "Edit Group",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Avatar
+                      InkWell(
+                        onTap: () async {
+                          await pickImage();
+                          setState(() {});
+                        },
+                        child: CircleAvatar(
+                          radius: 45,
+                          backgroundColor: Colors.blue[50],
+                          backgroundImage: selectedImage != null
+                              ? FileImage(selectedImage!)
+                              : (currentImage != null
+                              ? NetworkImage(currentImage!)
+                              : null) as ImageProvider?,
+                          child: (selectedImage == null && currentImage == null)
+                              ? const Icon(
+                            Icons.camera_alt,
+                            size: 32,
+                            color: Colors.blueGrey,
+                          )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Group name
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          labelText: "Group Name",
+                          prefixIcon: const Icon(Icons.text_fields),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+
+                      // Description
+                      TextField(
+                        controller: desController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: "Description",
+                          prefixIcon: const Icon(Icons.description),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+
+                      // Action buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              "Cancel",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.save),
+                            label: const Text("Save Changes"),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () async {
+                              if (nameController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Group name is required"),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final payload = {
+                                "id": grp['id'],
+                                "name": nameController.text.trim(),
+                                "des": desController.text.trim(),
+                                "avt": currentImage,
+                                "maxMember": grp['maxMember'] ?? 100,
+                              };
+
+                              try {
+                                  await updateGroupById(grp['id'], payload);
+
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      "Group '${payload['name']}' updated successfully!",
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+
+                                _fetchData();
+                              } catch (e) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Failed to update group: $e"),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
-  void handleDeleteGroup(int groupId) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("Delete group $groupId")));
+  void handleDeleteGroup(
+      BuildContext context, int groupId, Function _fetchData) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // bắt buộc chọn Cancel/Delete
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: Colors.red, size: 30),
+              SizedBox(width: 8),
+              Text(
+                "Confirm Delete",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: const Text(
+            "This action cannot be undone.\nAre you sure you want to delete this group?",
+            style: TextStyle(fontSize: 15, height: 1.4),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          actions: [
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Text("Cancel"),
+              ),
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.delete, size: 20),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              label: const Text("Delete"),
+              onPressed: () async {
+                try {
+                  await deleteGroupById(groupId);
+                  Navigator.pop(ctx);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Group deleted successfully"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+
+                  _fetchData(); // reload list
+                } catch (e) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Failed to delete group: $e"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +606,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         // màu theo theme (light/dark)
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.surface,
+        backgroundColor:
+            Theme.of(context).appBarTheme.backgroundColor ??
+            Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.primary,
         elevation: 1,
         actions: [
@@ -189,7 +628,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   ),
                 );
               },
-              icon: Icon(Icons.calendar_today, size: 16, color: Theme.of(context).colorScheme.primary),
+              icon: Icon(
+                Icons.calendar_today,
+                size: 16,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               label: Text(
                 'My Appointment',
                 style: TextStyle(
@@ -204,7 +647,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
             ),
           ),
@@ -215,11 +661,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const PublicCallPage(paramRoomID: "0000"),
+                    builder: (context) =>
+                        const PublicCallPage(paramRoomID: "0000"),
                   ),
                 );
               },
-              icon: Icon(Icons.call, size: 16, color: Theme.of(context).colorScheme.primary),
+              icon: Icon(
+                Icons.call,
+                size: 16,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               label: Text(
                 'Public Call',
                 style: TextStyle(
@@ -234,7 +685,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
             ),
           ),
@@ -259,9 +713,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             itemCount: sessions.length,
             itemBuilder: (_, index) {
               final session = sessions[index];
-              final isCurrentUserSender = session['sender']['id'] == currentUserId;
-              final otherUser =
-              isCurrentUserSender ? session['receiver'] : session['sender'];
+              final isCurrentUserSender =
+                  session['sender']['id'] == currentUserId;
+              final otherUser = isCurrentUserSender
+                  ? session['receiver']
+                  : session['sender'];
               final lastMsg = lastestMessages[session['id']];
               final unread = unreadStatus[session['id']] ?? false;
 
@@ -283,13 +739,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         Stack(
                           children: [
                             CircleAvatar(
-                              backgroundImage: (otherUser['avatar'] != null &&
-                                  otherUser['avatar'].isNotEmpty)
+                              backgroundImage:
+                                  (otherUser['avatar'] != null &&
+                                      otherUser['avatar'].isNotEmpty)
                                   ? NetworkImage(otherUser['avatar'])
                                   : null,
                               radius: 28,
-                              child: (otherUser['avatar'] == null ||
-                                  otherUser['avatar'].isEmpty)
+                              child:
+                                  (otherUser['avatar'] == null ||
+                                      otherUser['avatar'].isEmpty)
                                   ? const Icon(Icons.person, size: 28)
                                   : null,
                             ),
@@ -304,7 +762,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                                     color: Colors.red,
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: Theme.of(context).scaffoldBackgroundColor,
+                                      color: Theme.of(
+                                        context,
+                                      ).scaffoldBackgroundColor,
                                       width: 2,
                                     ),
                                   ),
@@ -327,7 +787,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                                   fontSize: 16,
                                   color: unread
                                       ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context).textTheme.bodyLarge?.color,
+                                      : Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge?.color,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -338,11 +800,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                               Text(
                                 lastMsg?.message ?? '',
                                 style: TextStyle(
-                                  fontWeight:
-                                  unread ? FontWeight.w600 : FontWeight.normal,
+                                  fontWeight: unread
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
                                   color: unread
                                       ? Theme.of(context).colorScheme.onSurface
-                                      : Theme.of(context).textTheme.bodyMedium?.color,
+                                      : Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium?.color,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -357,9 +822,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         if (lastMsg != null)
                           Text(
                             DateFormat('HH:mm').format(lastMsg.timestamp),
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey,
-                            ),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(color: Colors.grey),
                           ),
                       ],
                     ),
@@ -447,7 +912,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     ),
                   ),
                   ElevatedButton.icon(
-                    onPressed: handleOpenCreate,
+                    onPressed: () {
+                      handleOpenCreate(context, _fetchData);
+                    },
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text("Create"),
                     style: ElevatedButton.styleFrom(
@@ -494,14 +961,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                       spacing: 4,
                       children: [
                         IconButton(
-                          onPressed: () => handleEditGroup(grp),
+                          onPressed: () =>handleEditGroup(context, grp, _fetchData),
                           icon: const Icon(
-                            Icons.edit,
-                            color: Colors.blueAccent,
+                            Icons.edit_note,
+                            color: Colors.teal,
                           ),
                         ),
                         IconButton(
-                          onPressed: () => handleDeleteGroup(grp['id']),
+                          onPressed: () => handleDeleteGroup(context, grp['id'], _fetchData),
                           icon: const Icon(
                             Icons.delete,
                             color: Colors.redAccent,

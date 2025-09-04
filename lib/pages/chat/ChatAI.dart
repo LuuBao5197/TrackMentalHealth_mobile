@@ -173,9 +173,10 @@ class _ChatAIState extends State<ChatAI> {
         showUserAvatars: false,
         showUserNames: true,
         theme: const DefaultChatTheme(
-          primaryColor: Colors.teal,
-          inputBackgroundColor: Colors.white,
-          inputTextColor: Colors.black,
+          primaryColor: Colors.teal,               // màu bong bóng của bạn
+          inputBackgroundColor: Colors.white,      // màu input box
+          inputTextColor: Colors.black,            // màu chữ trong input
+          backgroundColor: Color(0xFFF1F8F6),      // ✅ đổi màu nền ở đây
           sentMessageBodyTextStyle: TextStyle(color: Colors.white),
         ),
       ),

@@ -1,4 +1,4 @@
-import 'dart:convert'; // Thêm để dùng jsonEncode
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
@@ -14,12 +14,12 @@ class ChatDetail extends StatefulWidget {
   final int sessionId;
   final Map<String, dynamic> user;
 
-
   const ChatDetail({super.key, required this.user, required this.sessionId});
 
   @override
   State<ChatDetail> createState() => _ChatDetailState();
 }
+
 class _ChatDetailState extends State<ChatDetail> {
   bool loading = true;
   String? error;
@@ -32,7 +32,6 @@ class _ChatDetailState extends State<ChatDetail> {
     super.initState();
     _initChat();
   }
-
 
   Future<void> _initChat() async {
     try {
@@ -103,6 +102,7 @@ class _ChatDetailState extends State<ChatDetail> {
 
     stompService.sendMessage("/app/chat/${widget.sessionId}", payload);
   }
+
   @override
   void dispose() {
     stompService.disconnect();
@@ -119,52 +119,62 @@ class _ChatDetailState extends State<ChatDetail> {
     }
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background, // ✅ nền đổi theo theme
       appBar: AppBar(
         title: Text(
           widget.user['fullname'] ?? 'Chat',
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
         ),
-        backgroundColor: Colors.teal,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.videocam_outlined,size: 35, color: Colors.white),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PrivateCallPage(
-                      sessionId: widget.sessionId.toString(),
-                      currentUserId: currentUserId!,
-                      currentUserName: widget.user['fullname'], // tên người gọi hiện tại
-                      isCaller: true, // vì là người bấm gọi
-                    ),
+            icon: Icon(Icons.videocam_outlined, size: 35, color: Theme.of(context).colorScheme.onPrimary),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PrivateCallPage(
+                    sessionId: widget.sessionId.toString(),
+                    currentUserId: currentUserId!,
+                    currentUserName: widget.user['fullname'],
+                    isCaller: true,
                   ),
-                );
-              }
+                ),
+              );
+            },
           ),
         ],
-
       ),
-
       body: SafeArea(
         child: Chat(
           messages: messages,
           onSendPressed: _handleSendPressed,
           user: types.User(
             id: currentUserId ?? '0',
-            imageUrl: widget.user['avatar'] ?? "", // avatar từ user object
+            imageUrl: widget.user['avatar'] ?? "",
           ),
           showUserAvatars: true,
           showUserNames: true,
-          theme: const DefaultChatTheme(
-            primaryColor: Colors.teal,
-            inputBackgroundColor: Colors.white,
-            inputTextColor: Colors.black,
-            sentMessageBodyTextStyle: TextStyle(color: Colors.white),
+          theme: DefaultChatTheme(
+            // Bong bóng tin nhắn mình gửi
+            primaryColor: Colors.teal.shade600,
+            sentMessageBodyTextStyle: const TextStyle(color: Colors.white),
+
+            // Bong bóng tin nhắn nhận
+            secondaryColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey.shade800
+                : Colors.grey.shade200,
+            receivedMessageBodyTextStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+
+            // Input
+            inputBackgroundColor: Theme.of(context).colorScheme.surface,
+            inputTextColor: Theme.of(context).colorScheme.onSurface,
           ),
         ),
       ),
