@@ -13,6 +13,7 @@ class ApiConstants {
   static const String sendOtp = baseUrl + '/users/send-otp-register';
   static const String verifyOtp = baseUrl + '/users/verify-otp-register';
   static const String checkEmailExists = baseUrl + '/users/check-email';
+  static const String loginWithGoogle = baseUrl + '/auth/oauth/google';
 
   //Lesson,Article,Exercise
   static const String getLessons = '$baseUrl/lesson';
