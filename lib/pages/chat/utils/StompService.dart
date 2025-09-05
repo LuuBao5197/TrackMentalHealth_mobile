@@ -1,13 +1,16 @@
 import 'dart:convert';
 import 'package:stomp_dart_client/stomp_dart_client.dart';
+import 'package:trackmentalhealth/core/constants/chat_api.dart';
+
+import '../../../core/constants/api_constants.dart' as api_constants;
 
 class StompService {
   late StompClient _stompClient;
   bool _connected = false;
 
   // Thay đổi IP theo backend của bạn
-  static const String ipLocal = '192.168.1.5';
-  final String _socketUrl = 'ws://$ipLocal:9999/ws';
+  final ip = api_constants.ApiConstants.ipLocal;
+  late final String _socketUrl = 'ws://${ip}:9999/ws';
 
   /// Khởi tạo kết nối STOMP
   void connect({

@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
+import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 // import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/content/permissions.dart';
 
@@ -19,6 +20,7 @@ import 'package:trackmentalhealth/pages/home/HeroPage.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
 import 'package:trackmentalhealth/pages/home/mood_history_page.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
+import 'package:trackmentalhealth/pages/notification/NotificationScreen.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/quiz/QuizScreen.dart';
 import 'package:trackmentalhealth/pages/test/PersonalityTestPage.dart';
@@ -114,11 +116,13 @@ class _MainScreenState extends State<MainScreen> {
     const HeroPage(),
     const TestScreen(),
     const WriteDiaryPage(),
+    const BlogScreen(),
+    const ChatScreen(), // ChatScreen placeholder
+    const NotificationScreen(),
     const QuizListForUserPage(),
-    const BlogScreen(), // ChatScreen placeholder
-    const ProfileScreen(),
     const ContentTabScreen(),
   ];
+
 
   @override
   void initState() {
@@ -197,38 +201,19 @@ class _MainScreenState extends State<MainScreen> {
                 selectedIconTheme: IconThemeData(color: selectedColor),
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
                 destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.home),
-                    label: Text("Home"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.emoji_emotions),
-                    label: Text("Mood"),
-                  ),
+                  NavigationRailDestination(icon: Icon(Icons.home), label: Text("Home")),
+                  NavigationRailDestination(icon: Icon(Icons.emoji_emotions), label: Text("Mood")),
+                  NavigationRailDestination(icon: Icon(Icons.quiz), label: Text("Test")),
+                  NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
+                  NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
+                  NavigationRailDestination(icon: Icon(Icons.messenger_outline_rounded), label: Text("Chat")),
+                  NavigationRailDestination(icon: Icon(Icons.notifications_active), label: Text("Notice")),
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
                     label: Text("Test"),
                   ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.mood),
-                    label: Text("Diary"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.article),
-                    label: Text("Quiz"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.messenger_outline_rounded),
-                    label: Text("Chat"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.person),
-                    label: Text("Profile"),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.menu_book),
-                    label: Text("Content"),
-                  ),
+                  NavigationRailDestination(icon: Icon(Icons.menu_book), label: Text("Content")),
+
                 ],
               ),
             ),
@@ -264,21 +249,14 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Test',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
+
+          BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
+          BottomNavigationBarItem(icon: Icon(Icons.messenger_outline_rounded), label: 'Chat'),
+          BottomNavigationBarItem(icon: Icon(Icons.notifications_active), label: 'Notice'),
+          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Content'),
           BottomNavigationBarItem(
             icon: Icon(Icons.article_rounded),
             label: 'Quiz',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.messenger_outline_rounded),
-            label: 'Chat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book),
-            label: 'Content',
           ),
         ],
       ),
