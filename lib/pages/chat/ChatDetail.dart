@@ -141,7 +141,7 @@ class _ChatDetailState extends State<ChatDetail> {
                     sessionId: widget.sessionId.toString(),
                     currentUserId: currentUserId!,
                     currentUserName: widget.user['fullname'],
-                    isCaller: true,
+                    // isCaller: true,
                   ),
                 ),
               );
