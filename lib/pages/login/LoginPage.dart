@@ -54,6 +54,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final googleUser = await GoogleSignIn(
         scopes: ['email', 'profile'],
+        serverClientId: "713857311495-mvg33eppl0s6rjiju5chh0rt02ho0ltb.apps.googleusercontent.com",
       ).signIn();
 
       if (googleUser == null) {
@@ -114,7 +115,6 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _isLoading = false);
     }
   }
-
 
   void parseToken(String token) {
     Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
@@ -250,9 +250,7 @@ class _LoginPageState extends State<LoginPage> {
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _isObscure
-                              ? Icons.visibility
-                              : Icons.visibility_off,
+                          _isObscure ? Icons.visibility : Icons.visibility_off,
                         ),
                         onPressed: () {
                           setState(() => _isObscure = !_isObscure);
@@ -313,11 +311,13 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _isLoading ? null : _handleLogin,
                       child: _isLoading
                           ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2),
-                      )
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
                           : const Text('Login'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -332,7 +332,9 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                        MaterialPageRoute(
+                          builder: (_) => const ForgotPasswordPage(),
+                        ),
                       );
                     },
                     child: const Text('Forgot password?'),
@@ -346,7 +348,8 @@ class _LoginPageState extends State<LoginPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => const RegisterPage()),
+                              builder: (context) => const RegisterPage(),
+                            ),
                           );
                         },
                         child: const Text('Register'),
