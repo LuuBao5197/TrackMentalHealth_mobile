@@ -1,12 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-
-// TODO: Thay thế hàm này bằng logic thực tế để lấy token từ secure storage hoặc shared_preferences
-Future<String?> getToken() async {
-  // Ví dụ giả định
-  return 'your_jwt_token_here';
-}
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 class MentalAlertBox extends StatefulWidget {
   const MentalAlertBox({super.key});
@@ -26,27 +21,25 @@ class _MentalAlertBoxState extends State<MentalAlertBox> {
   }
 
   Future<void> fetchMentalAnalysis() async {
-    final token = await getToken();
-    if (token == null) return;
-
-    final url = Uri.parse('http://172.16.3.156:9999/api/mental/analyze');
-
     try {
-      final response = await http.get(url, headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      });
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString("token") ?? "";
 
-      if (response.statusCode == 200) {
+      final res = await http.get(
+        Uri.parse("http://172.16.2.28:9999/api/mental/analyze"),
+        headers: {"Authorization": "Bearer $token"},
+      );
+
+      if (res.statusCode == 200) {
         setState(() {
-          result = json.decode(response.body);
+          result = json.decode(res.body);
           loading = false;
         });
       } else {
         setState(() {
           result = {
-            'description': 'Không thể lấy thông tin phân tích tâm lý.',
-            'suggestion': null,
+            "description": "Không thể lấy thông tin phân tích tâm lý.",
+            "suggestion": null,
           };
           loading = false;
         });
@@ -54,8 +47,8 @@ class _MentalAlertBoxState extends State<MentalAlertBox> {
     } catch (e) {
       setState(() {
         result = {
-          'description': 'Lỗi khi gọi API.',
-          'suggestion': null,
+          "description": "Không thể lấy thông tin phân tích tâm lý.",
+          "suggestion": null,
         };
         loading = false;
       });
@@ -64,15 +57,18 @@ class _MentalAlertBoxState extends State<MentalAlertBox> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Text("Đang phân tích dữ liệu tâm lý...");
-
-    final suggestion = result?['suggestion'];
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: Text("Đang phân tích dữ liệu tâm lý..."),
+      );
+    }
 
     return Card(
-      color: Colors.yellow[100],
-      margin: const EdgeInsets.symmetric(vertical: 16),
+      color: Colors.amber.shade100,
+      margin: const EdgeInsets.only(top: 16),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -81,44 +77,42 @@ class _MentalAlertBoxState extends State<MentalAlertBox> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
-            Text(result?['description'] ?? 'Không có mô tả.'),
+            Text(result?["description"] ?? "Không có mô tả."),
 
-            if (suggestion != null && suggestion['type'] == 'test') ...[
+            // Nếu là gợi ý test
+            if (result?["suggestion"]?["type"] == "test") ...[
               const SizedBox(height: 12),
               Text(
-                "🧪 Gợi ý bài test phù hợp: ${suggestion['testTitle']}",
+                "🧪 Gợi ý bài test phù hợp: ${result?["suggestion"]["testTitle"] ?? ""}",
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 4),
-              Text(suggestion['testDescription'] ?? ''),
-              const SizedBox(height: 4),
-              Text("Hướng dẫn: ${suggestion['instructions']}"),
+              Text(result?["suggestion"]["testDescription"] ?? ""),
               const SizedBox(height: 8),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.quiz),
-                label: const Text("👉 Làm bài test ngay"),
+              ElevatedButton(
                 onPressed: () {
-                  final testId = suggestion['testId'];
                   Navigator.pushNamed(
                     context,
-                    '/doTest/$testId',
+                    "/user/doTest/${result?["suggestion"]["testId"]}",
                   );
                 },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.blue,
+                  side: const BorderSide(color: Colors.blue),
+                ),
+                child: const Text("👉 Làm bài test ngay"),
               ),
             ],
 
-            if (suggestion != null && suggestion['type'] == 'emergency') ...[
+            // Nếu là cảnh báo khẩn cấp
+            if (result?["suggestion"]?["type"] == "emergency") ...[
               const SizedBox(height: 12),
               const Text(
                 "🚨 Cảnh báo khẩn cấp",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 4),
-              Text(suggestion['message'] ?? ''),
-            ]
+              Text(result?["suggestion"]["message"] ?? ""),
+            ],
           ],
         ),
       ),

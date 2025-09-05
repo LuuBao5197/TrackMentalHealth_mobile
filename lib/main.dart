@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
 import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
-import 'package:trackmentalhealth/pages/diary/DiaryScreen.dart';
+import 'package:trackmentalhealth/pages/diary/diary_history_page.dart';
+import 'package:trackmentalhealth/pages/diary/write_diary_page.dart';
 import 'package:trackmentalhealth/pages/home/HeroPage.dart';
 import 'package:trackmentalhealth/pages/home/HomeScreen.dart';
+import 'package:trackmentalhealth/pages/home/mood_history_page.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
@@ -54,6 +56,11 @@ class TrackMentalHealthApp extends StatelessWidget {
         ),
       ),
       home: const LoginPage(),
+      routes: {
+        '/hero': (context) => const HeroPage(),
+        '/mood-history': (context) => const MoodHistoryPage(),
+        '/history': (context) => const DiaryHistoryPage(),
+      },
     );
   }
 }
@@ -72,7 +79,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     HeroPage(),
     const TestScreen(),
-    const DiaryScreen(),
+    const WriteDiaryPage(),
     const BlogScreen(),
     const ChatScreen(),
     const ProfileScreen(),
