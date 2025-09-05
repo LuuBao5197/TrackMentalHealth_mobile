@@ -1,6 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.trackmentalhealth01">
-<uses-permission android:name="android.permission.CAMERA" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
@@ -10,7 +9,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
-        android:label="trackmentalhealth01"
+        android:label="trackmentalhealth"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
