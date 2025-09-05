@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import '../../core/constants/mental_alert_box.dart';
 import '../../core/constants/mood_api.dart'; // file api của bạn
 
@@ -141,7 +142,7 @@ Chỉ cần trả lời ngắn gọn trong 1–2 câu, không cần liệt kê l
 """;
 
       // ======= GỌI API AI =======
-      final uri = Uri.parse("http://172.16.2.28:9999/api/analyze-mood");
+      final uri = Uri.parse("http://${ApiConstants.ipLocal }:9999/api/analyze-mood");
       final response = await http.post(
         uri,
         headers: {"Content-Type": "application/json"},

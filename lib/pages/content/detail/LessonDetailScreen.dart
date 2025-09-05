@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/constants/api_constants.dart';
 
 class LessonDetailScreen extends StatefulWidget {
@@ -18,29 +20,32 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   Map<String, dynamic>? lesson;
   List<int> completedSteps = [];
   String? userId;
+  String? token;
 
   @override
   void initState() {
     super.initState();
-    _decodeToken();
+    _loadTokenAndUser();
   }
 
-  void _decodeToken() {
-    // Giả lập lấy token từ local storage (có thể dùng shared_preferences)
-    const token = 'YOUR_TOKEN_HERE'; // Thay bằng cách lấy token thực tế
-    if (token.isNotEmpty) {
+  Future<void> _loadTokenAndUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedToken = prefs.getString('token') ?? '';
+    if (storedToken.isNotEmpty) {
       try {
-        final decoded = JwtDecoder.decode(token);
+        final decoded = JwtDecoder.decode(storedToken);
         setState(() {
+          token = storedToken;
           userId = decoded['userId'].toString();
         });
-        _fetchLesson(); // gọi sau khi đã có userId
+        _fetchLesson();
       } catch (e) {
         print('❌ Token không hợp lệ: $e');
-        _fetchLesson(); // vẫn gọi lesson nếu không có user
+        _fetchLesson(); // vẫn load lesson nếu token lỗi
       }
     } else {
-      _fetchLesson(); // vẫn gọi lesson nếu không có token
+      print('❌ Không tìm thấy token');
+      _fetchLesson(); // vẫn load lesson nếu chưa đăng nhập
     }
   }
 
@@ -48,6 +53,9 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     try {
       final response = await http.get(
         Uri.parse('${ApiConstants.getLessons}/${widget.lessonId}'),
+        headers: token != null
+            ? {'Authorization': 'Bearer $token'}
+            : {},
       );
       if (response.statusCode == 200) {
         setState(() {
@@ -65,17 +73,21 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   }
 
   Future<void> _fetchProgress() async {
+    if (userId == null || token == null) return;
+
     try {
       final response = await http.get(
         Uri.parse(
           '${ApiConstants.baseUrl}/user/$userId/lesson/${widget.lessonId}/progress',
         ),
+        headers: {'Authorization': 'Bearer $token'},
       );
       if (response.statusCode == 200) {
         final progressData = json.decode(response.body) as List;
         setState(() {
           completedSteps = progressData
-              .where((progress) => progress['step'] != null && progress['step']['id'] != null)
+              .where((progress) =>
+          progress['step'] != null && progress['step']['id'] != null)
               .map((progress) => progress['step']['id'] as int)
               .toList();
         });
@@ -88,15 +100,18 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   }
 
   Future<void> _updateProgress(int stepId) async {
-    if (userId == null || completedSteps.contains(stepId)) {
-      print('⏩ Step $stepId đã hoàn thành hoặc userId không tồn tại');
+    if (userId == null || token == null || completedSteps.contains(stepId)) {
+      print('⏩ Step $stepId đã hoàn thành hoặc userId/token không tồn tại');
       return;
     }
 
     try {
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}/user/progress/update'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: json.encode({
           'lessonId': widget.lessonId,
           'stepCompleted': stepId,
@@ -147,7 +162,8 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.blue),
                     borderRadius: BorderRadius.circular(20),
@@ -209,7 +225,8 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                     }
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    padding:
+                    const EdgeInsets.symmetric(vertical: 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -230,14 +247,18 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                             height: 1.5,
                           ),
                         ),
-                        if (step['mediaType'] == 'photo' && step['mediaUrl'] != null)
+                        if (step['mediaType'] == 'photo' &&
+                            step['mediaUrl'] != null)
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8.0),
                             child: Image.network(
                               step['mediaUrl'],
-                              width: MediaQuery.of(context).size.width * 0.7,
+                              width: MediaQuery.of(context).size.width *
+                                  0.7,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
+                              errorBuilder: (context, error,
+                                  stackTrace) =>
                               const Text(
                                 'Không thể tải hình ảnh',
                                 style: TextStyle(color: Colors.red),
@@ -246,7 +267,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                           ),
                         Text(
                           step['content'] ??
-                              'Nội dung bước ${step['stepNumber']} (cập nhật?)',
+                              'Nội dung bước ${step['stepNumber']}',
                           style: const TextStyle(
                             fontSize: 16,
                             fontFamily: 'Georgia',

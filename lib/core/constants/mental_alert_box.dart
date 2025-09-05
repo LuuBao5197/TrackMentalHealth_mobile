@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:trackmentalhealth/core/constants/api_constants.dart';
 
 class MentalAlertBox extends StatefulWidget {
   const MentalAlertBox({super.key});
@@ -26,7 +27,7 @@ class _MentalAlertBoxState extends State<MentalAlertBox> {
       final token = prefs.getString("token") ?? "";
 
       final res = await http.get(
-        Uri.parse("http://172.16.2.28:9999/api/mental/analyze"),
+        Uri.parse("http://${ApiConstants.ipLocal}:9999/api/mental/analyze"),
         headers: {"Authorization": "Bearer $token"},
       );
 

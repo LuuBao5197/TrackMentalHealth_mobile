@@ -5,18 +5,20 @@ import 'package:http/http.dart' as http;
 import 'package:trackmentalhealth/models/ChatMessageGroup.dart';
 
 import '../../models/ChatMessage.dart';
+import '../../models/Psychologist.dart';
+import 'api_constants.dart' as api_constants;
 
-const String ipLocal = '192.168.1.7';
-const String baseUrl = 'http://${ipLocal}:9999/api';
+final ip = api_constants.ApiConstants.ipLocal;
+final String baseUrl = 'http://${ip}:9999/api';
 
 // ==== Chat ====
-const String chatUrl = '$baseUrl/chat';
-const String appointmentUrl = '$baseUrl/appointment';
-const String psyUrl = '$baseUrl/psychologist';
-const String aiUrl = '$baseUrl/chatai';
-const String notificationUrl = '$baseUrl/notification';
-const String chatGroupUrl = '$baseUrl/chatgroup';
-const String uploadUrl = '$baseUrl/upload';
+final String chatUrl = '$baseUrl/chat';
+final String appointmentUrl = '$baseUrl/appointment';
+final String psyUrl = '$baseUrl/psychologist';
+final String aiUrl = '$baseUrl/chatai';
+final String notificationUrl = '$baseUrl/notification';
+final String chatGroupUrl = '$baseUrl/chatgroup';
+final String uploadUrl = '$baseUrl/upload';
 
 // ==================== Upload File ====================
 Future<String> uploadFile(File file) async {
@@ -164,14 +166,16 @@ Future<dynamic> deleteAppointment(int id) async {
 }
 
 // ==================== Psychologists ====================
-Future<List<dynamic>> getPsychologists() async {
-  final res = await http.get(Uri.parse('${psyUrl}/'));
+Future<List<Psychologist>> getPsychologists() async {
+  final res = await http.get(Uri.parse('$psyUrl/'));
   if (res.statusCode == 200) {
-    return jsonDecode(res.body);
+    final List<dynamic> data = jsonDecode(res.body);
+    return data.map((e) => Psychologist.fromJson(e)).toList();
   } else {
     throw Exception('Failed to fetch psychologists');
   }
 }
+
 
 // ==================== AI ====================
 Future<String> chatAI(Map<String, dynamic> data) async {

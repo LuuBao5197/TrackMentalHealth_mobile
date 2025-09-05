@@ -1,9 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trackmentalhealth/core/constants/api_constants.dart';
+
+
 
 class DiaryApi {
-  static const String baseUrl = 'http://172.16.2.28:9999/api/diaries'; // đổi IP LAN
+
+  static final String baseUrl =
+  "http://${ApiConstants.ipLocal}:9999/api/diaries";
+
 
   // Lấy headers kèm token
   static Future<Map<String, String>> _getAuthHeaders() async {
