@@ -1,7 +1,7 @@
 class ApiConstants {
   // Base URL có thể đổi 1 nơi duy nhất ở đây
 
-  static const String ipLocal = '192.168.1.228';
+  static const String ipLocal = '192.168.1.31';
   static const String baseUrl = 'http://' + ipLocal + ':9999/api';
 
   // Ví dụ: các endpoint cụ thể
@@ -13,6 +13,7 @@ class ApiConstants {
   static const String sendOtp = baseUrl + '/users/send-otp-register';
   static const String verifyOtp = baseUrl + '/users/verify-otp-register';
   static const String checkEmailExists = baseUrl + '/users/check-email';
+  static const String loginWithGoogle = baseUrl + '/auth/oauth/google';
 
   //Lesson,Article,Exercise
   static const String getLessons = '$baseUrl/lesson';

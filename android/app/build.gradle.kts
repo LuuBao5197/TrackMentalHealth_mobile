@@ -1,16 +1,16 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    id("com.google.gms.google-services")
+//    id("com.google.gms.google-services")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
-    namespace = "com.example.trackmentalhealth"
+    namespace = "com.example.trackmentalhealth01"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.trackmentalhealth"
+        applicationId = "com.example.trackmentalhealth01"
         minSdk = 23
         targetSdk = 35
         versionCode = 1
@@ -49,7 +49,7 @@ flutter {
 }
 
 dependencies {
-    implementation("com.google.firebase:firebase-auth-ktx:22.1.0")
+//    implementation("com.google.firebase:firebase-auth-ktx:22.1.0")
     implementation("androidx.multidex:multidex:2.0.1") // Bắt buộc nếu multiDexEnabled
     implementation("com.google.android.gms:play-services-auth:21.0.0")
 }
