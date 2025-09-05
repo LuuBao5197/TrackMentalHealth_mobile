@@ -29,15 +29,9 @@ import 'package:trackmentalhealth/pages/content/ContentTabScreen.dart';
 
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
-  // Gọi xin quyền trước khi vào app
-  await requestAppPermissions();
 
   runApp(
     ChangeNotifierProvider(
@@ -45,6 +39,11 @@ void main() async {
       child: const TrackMentalHealthApp(),
     ),
   );
+
+  // Xin quyền sau khi app đã chạy mới ko bị block UI
+  Future.microtask(() async {
+    await requestAppPermissions();
+  });
 }
 
 class TrackMentalHealthApp extends StatelessWidget {
@@ -389,7 +388,7 @@ class _MainScreenState extends State<MainScreen> {
                   onTap: () async {
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.clear();
-                    await FirebaseAuth.instance.signOut();
+                    // await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
                     if (await googleSignIn.isSignedIn())
                       await googleSignIn.signOut();
