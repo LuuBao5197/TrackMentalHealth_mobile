@@ -7,13 +7,10 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
 import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
-// import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/content/permissions.dart';
 
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
-import 'package:trackmentalhealth/pages/blog/BlogScreen.dart';
 import 'package:trackmentalhealth/pages/diary/diary_history_page.dart';
 import 'package:trackmentalhealth/pages/diary/write_diary_page.dart';
 import 'package:trackmentalhealth/pages/home/HeroPage.dart';
@@ -112,11 +109,9 @@ class _MainScreenState extends State<MainScreen> {
   bool _loadingProfile = true;
 
   final List<Widget> _screens = [
-    const HomeScreen(),
     const HeroPage(),
     const TestScreen(),
     const WriteDiaryPage(),
-    const BlogScreen(),
     const ChatScreen(), // ChatScreen placeholder
     const NotificationScreen(),
     const QuizListForUserPage(),
@@ -201,11 +196,9 @@ class _MainScreenState extends State<MainScreen> {
                 selectedIconTheme: IconThemeData(color: selectedColor),
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
                 destinations: const [
-                  NavigationRailDestination(icon: Icon(Icons.home), label: Text("Home")),
                   NavigationRailDestination(icon: Icon(Icons.emoji_emotions), label: Text("Mood")),
                   NavigationRailDestination(icon: Icon(Icons.quiz), label: Text("Test")),
                   NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
-                  NavigationRailDestination(icon: Icon(Icons.article), label: Text("Blog")),
                   NavigationRailDestination(icon: Icon(Icons.messenger_outline_rounded), label: Text("Chat")),
                   NavigationRailDestination(icon: Icon(Icons.notifications_active), label: Text("Notice")),
                   NavigationRailDestination(
@@ -239,25 +232,14 @@ class _MainScreenState extends State<MainScreen> {
         unselectedLabelStyle: const TextStyle(fontSize: 12),
         elevation: 10,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.emoji_emotions),
-            label: 'Mood',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_rounded),
-            label: 'Test',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.emoji_emotions), label: 'Mood',),
+          BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test',),
           BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
-
-          BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Blog'),
           BottomNavigationBarItem(icon: Icon(Icons.messenger_outline_rounded), label: 'Chat'),
           BottomNavigationBarItem(icon: Icon(Icons.notifications_active), label: 'Notice'),
+          BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Quiz'),
           BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Content'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.article_rounded),
-            label: 'Quiz',
-          ),
+
         ],
       ),
     );
