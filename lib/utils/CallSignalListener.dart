@@ -75,7 +75,7 @@ class _CallSignalListenerState extends State<CallSignalListener> {
                 sessionId: widget.sessionId,
                 currentUserId: widget.currentUserId,
                 currentUserName: widget.currentUserName,
-                isCaller: true,
+                // isCaller: true,
               ),
             ),
           );
@@ -120,7 +120,7 @@ class _CallSignalListenerState extends State<CallSignalListener> {
                       sessionId: widget.sessionId,
                       currentUserId: widget.currentUserId,
                       currentUserName: widget.currentUserName,
-                      isCaller: false,
+                      // isCaller: false,
                     ),
                   ),
                 );

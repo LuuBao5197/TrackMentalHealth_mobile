@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:trackmentalhealth/core/constants/chat_api.dart';
-import 'package:trackmentalhealth/pages/chat/utils/StompService.dart';
-
+import 'package:trackmentalhealth/models/User.dart';
+import 'package:trackmentalhealth/utils/StompService.dart';
 import '../../helper/UserSession.dart';
 import '../../models/ChatMessage.dart';
 import 'DTO/ChatMessageDTO.dart';
@@ -12,7 +12,7 @@ import 'VideoCallPage/PrivateCallPage.dart';
 
 class ChatDetail extends StatefulWidget {
   final int sessionId;
-  final Map<String, dynamic> user;
+  final User user; // Người nhận
 
   const ChatDetail({super.key, required this.user, required this.sessionId});
 
@@ -25,6 +25,7 @@ class _ChatDetailState extends State<ChatDetail> {
   String? error;
   List<types.TextMessage> messages = [];
   String? currentUserId;
+  String? currentUserAvatar;
   late StompService stompService;
 
   @override
@@ -43,11 +44,25 @@ class _ChatDetailState extends State<ChatDetail> {
         });
         return;
       }
-      setState(() => currentUserId = id.toString());
 
+      currentUserId = id.toString();
+      currentUserAvatar = await UserSession.getAvatar();
+      setState(() {});
+
+      // Load tin nhắn từ API
       final data = await getMessagesBySessionId(widget.sessionId);
       final parsedMessages = data.map<types.TextMessage>((json) {
-        return ChatMessage.fromJson(json).toTextMessage(currentUserId!);
+        final chatMsg = ChatMessage.fromJson(json);
+        final isCurrentUser = chatMsg.senderId.toString() == currentUserId;
+
+        return types.TextMessage(
+          id: chatMsg.id.toString(),
+          text: chatMsg.message,
+          author: types.User(
+            id: chatMsg.senderId.toString(),
+            imageUrl: isCurrentUser ? currentUserAvatar : widget.user.avatar,
+          ),
+        );
       }).toList();
 
       setState(() {
@@ -55,21 +70,25 @@ class _ChatDetailState extends State<ChatDetail> {
         loading = false;
       });
 
+      // Kết nối Stomp realtime
       stompService = StompService();
       stompService.connect(
         onConnect: (_) {
           stompService.subscribe("/topic/chat/${widget.sessionId}", (frame) {
             if (frame.body != null) {
               final dto = ChatMessageDTO.fromRawJson(frame.body!);
+              final isCurrentUser = dto.senderId.toString() == currentUserId;
 
               final textMsg = types.TextMessage(
                 id: DateTime.now().millisecondsSinceEpoch.toString(),
                 text: dto.message,
+                createdAt: DateTime.now().millisecondsSinceEpoch,
                 author: types.User(
                   id: dto.senderId.toString(),
                   firstName: dto.senderName,
+                  imageUrl:
+                  isCurrentUser ? currentUserAvatar : widget.user.avatar,
                 ),
-                createdAt: DateTime.now().millisecondsSinceEpoch,
               );
 
               setState(() {
@@ -88,15 +107,12 @@ class _ChatDetailState extends State<ChatDetail> {
   }
 
   void _handleSendPressed(types.PartialText message) async {
-    if (currentUserId == null || widget.user['id'] == null) {
-      print("⚠️ Không thể gửi tin nhắn: currentUserId hoặc receiverId null");
-      return;
-    }
+    if (currentUserId == null || widget.user.id == null) return;
 
     final payload = {
       "message": message.text,
       "sender": {"id": int.parse(currentUserId!)},
-      "receiver": {"id": widget.user['id']},
+      "receiver": {"id": widget.user.id},
       "session": {"id": widget.sessionId},
     };
 
@@ -111,20 +127,13 @@ class _ChatDetailState extends State<ChatDetail> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    if (error != null) {
-      return Scaffold(body: Center(child: Text("Error: $error")));
-    }
+    if (loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (error != null) return Scaffold(body: Center(child: Text("Error: $error")));
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background, // ✅ nền đổi theo theme
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: Text(
-          widget.user['fullname'] ?? 'Chat',
-          style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
-        ),
+        title: Text(widget.user.fullName ?? 'Chat', style: TextStyle(color: Theme.of(context).colorScheme.onPrimary)),
         backgroundColor: Theme.of(context).colorScheme.primary,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onPrimary),
@@ -140,8 +149,7 @@ class _ChatDetailState extends State<ChatDetail> {
                   builder: (_) => PrivateCallPage(
                     sessionId: widget.sessionId.toString(),
                     currentUserId: currentUserId!,
-                    currentUserName: widget.user['fullname'],
-                    isCaller: true,
+                    currentUserName: widget.user.fullName ?? "User",
                   ),
                 ),
               );
@@ -154,25 +162,20 @@ class _ChatDetailState extends State<ChatDetail> {
           messages: messages,
           onSendPressed: _handleSendPressed,
           user: types.User(
-            id: currentUserId ?? '0',
-            imageUrl: widget.user['avatar'] ?? "",
+            id: currentUserId.toString(),
+            imageUrl: currentUserAvatar,
           ),
           showUserAvatars: true,
           showUserNames: true,
           theme: DefaultChatTheme(
-            // Bong bóng tin nhắn mình gửi
             primaryColor: Colors.teal.shade600,
             sentMessageBodyTextStyle: const TextStyle(color: Colors.white),
-
-            // Bong bóng tin nhắn nhận
             secondaryColor: Theme.of(context).brightness == Brightness.dark
                 ? Colors.grey.shade800
                 : Colors.grey.shade200,
             receivedMessageBodyTextStyle: TextStyle(
               color: Theme.of(context).colorScheme.onSurface,
             ),
-
-            // Input
             inputBackgroundColor: Theme.of(context).colorScheme.surface,
             inputTextColor: Theme.of(context).colorScheme.onSurface,
           ),

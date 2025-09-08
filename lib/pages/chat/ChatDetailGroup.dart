@@ -4,19 +4,24 @@ import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:trackmentalhealth/core/constants/chat_api.dart';
 import 'package:trackmentalhealth/models/ChatGroup.dart';
-import 'package:trackmentalhealth/pages/chat/utils/StompService.dart';
+import 'package:trackmentalhealth/utils/StompService.dart';
 import '../../helper/UserSession.dart';
 import '../../models/ChatMessageGroup.dart';
-import '../../models/User.dart'; // model cho tin nhắn group
+import '../../models/User.dart';
+import 'ChatDetail.dart'; // model cho tin nhắn group
 
 class ChatDetailGroup extends StatefulWidget {
   final int groupId;
   final String groupName;
+  final String createdBy;
+
 
   const ChatDetailGroup({
     super.key,
     required this.groupId,
     required this.groupName,
+    required this.createdBy,
+
   });
 
   @override
@@ -104,16 +109,31 @@ class _ChatDetailGroupState extends State<ChatDetailGroup> {
       stompService.connect(
         onConnect: (_) {
           // Subscribe group topic
-          stompService.subscribe("/topic/group/${widget.groupId}", (frame) {
-            if (frame.body == null || frame.body!.isEmpty) return;
+          stompService.subscribe("/topic/group/${widget.groupId}", (data) {
+            try {
+              if (data == null) {
+                print("⚠️ Nhận được null từ group ${widget.groupId}");
+                return;
+              }
 
-            final data = jsonDecode(frame.body!);
-            final msg = ChatMessageGroup.fromJson(data);
+              if (data is! Map<String, dynamic>) {
+                print("⚠️ Dữ liệu không phải Map: $data");
+                return;
+              }
 
-            setState(() {
-              messages.insert(0, msg.toTextMessage(currentUserId.toString()));
-            });
+              print("📩 New message from group ${widget.groupId}: $data");
+
+              final msg = ChatMessageGroup.fromJson(data);
+
+              setState(() {
+                messages.insert(0, msg.toTextMessage(currentUserId!));
+              });
+            } catch (e, s) {
+              print("❌ Error parsing JSON from /topic/group/${widget.groupId}: $e\n$s");
+            }
           });
+
+
         },
       );
     } catch (e) {
@@ -135,7 +155,7 @@ class _ChatDetailGroupState extends State<ChatDetailGroup> {
     final payload = {
       "groupId": widget.groupId,
       "senderId": int.parse(currentUserId!),
-      "content": message.text,
+      "content": message.text.toString(),
     };
 
     print("➡️ Gửi tin nhắn group: $payload");
@@ -172,54 +192,83 @@ class _ChatDetailGroupState extends State<ChatDetailGroup> {
               style: const TextStyle(color: Colors.white, fontSize: 18),
             ),
             Text(
-              "Creator: ${creatorName ?? 'USER'}", // creatorName từ API
+              "Created by: ${creatorName ?? widget.createdBy}", // ✅ hiển thị creator
               style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
         ),
         actions: [
-          PopupMenuButton<String>(
+          PopupMenuButton<User>(
             icon: Row(
               children: [
                 const Icon(Icons.group, color: Colors.white),
                 const SizedBox(width: 4),
                 Text(
-                  members.length.toString(), // số thành viên
+                  members.length.toString(),
                   style: const TextStyle(color: Colors.white),
                 ),
                 const Icon(Icons.arrow_drop_down, color: Colors.white),
               ],
             ),
+            onSelected: (User selectedUser) async {
+              try {
+                // 🔑 Lấy id user hiện tại
+                final currentUserId = await UserSession.getUserId();
+                if (currentUserId == null) {
+                  print("⚠️ User chưa đăng nhập");
+                  return;
+                }
+
+                // 🔑 Gọi API lấy (hoặc tạo) sessionId
+                final sessionJson = await initiateChatSession(
+                  currentUserId,
+                  selectedUser.id!,
+                );
+
+                final sessionId = sessionJson['id'];
+
+                // 👉 Điều hướng sang ChatDetail
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChatDetail(
+                      user: selectedUser,   // truyền object User
+                      sessionId: sessionId, // truyền sessionId từ API
+                    ),
+                  ),
+                );
+              } catch (e) {
+                print("❌ Lỗi khi mở chat riêng: $e");
+              }
+            },
             itemBuilder: (BuildContext context) {
               return members.map((user) {
-                return PopupMenuItem<String>(
-                  value: user.fullName!,
+                return PopupMenuItem<User>(
+                  value: user,
                   child: Row(
                     children: [
                       CircleAvatar(
                         radius: 16,
                         backgroundImage: (user.avatar?.isNotEmpty ?? false)
                             ? NetworkImage(user.avatar!)
-                            : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
-
+                            : const AssetImage('assets/images/default_avatar.png')
+                        as ImageProvider,
                       ),
                       const SizedBox(width: 8),
-                      Text(user.fullName!),
+                      Text(user.fullName ?? "Unknown"),
                     ],
                   ),
                 );
               }).toList();
-
-
             },
           ),
         ],
       ),
       body: SafeArea(
-        child: Chat(
+        child:Chat(
           messages: messages,
           onSendPressed: _handleSendPressed,
-          user: types.User(id: currentUserId ?? '0'),
+          user: types.User(id: currentUserId!),
           showUserAvatars: true,
           showUserNames: true,
           theme: const DefaultChatTheme(
@@ -229,6 +278,7 @@ class _ChatDetailGroupState extends State<ChatDetailGroup> {
             sentMessageBodyTextStyle: TextStyle(color: Colors.white),
           ),
         ),
+
       ),
     );
   }
