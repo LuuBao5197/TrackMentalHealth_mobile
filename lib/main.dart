@@ -23,6 +23,9 @@ import 'package:trackmentalhealth/pages/quiz/QuizScreen.dart';
 import 'package:trackmentalhealth/pages/test/PersonalityTestPage.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
 import 'package:trackmentalhealth/pages/content/ContentTabScreen.dart';
+import 'package:trackmentalhealth/utils/NotificationListenerWidget.dart';
+import 'package:trackmentalhealth/utils/StompService.dart';
+import 'package:trackmentalhealth/utils/showToast.dart';
 
 import 'core/constants/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -107,6 +110,9 @@ class _MainScreenState extends State<MainScreen> {
   String? avatarUrl;
   bool _loadingProfile = true;
 
+
+  bool hasNewNotification = false;
+
   final List<Widget> _screens = [
     const HeroPage(),
     const TestScreen(),
@@ -117,12 +123,12 @@ class _MainScreenState extends State<MainScreen> {
     const ContentTabScreen(),
   ];
 
-
   @override
   void initState() {
     super.initState();
     _loadProfile();
   }
+
 
   Future<void> _loadProfile() async {
     setState(() => _loadingProfile = true);
@@ -195,17 +201,34 @@ class _MainScreenState extends State<MainScreen> {
                 selectedIconTheme: IconThemeData(color: selectedColor),
                 unselectedIconTheme: IconThemeData(color: unselectedColor),
                 destinations: const [
-                  NavigationRailDestination(icon: Icon(Icons.emoji_emotions), label: Text("Mood")),
-                  NavigationRailDestination(icon: Icon(Icons.quiz), label: Text("Test")),
-                  NavigationRailDestination(icon: Icon(Icons.mood), label: Text("Diary")),
-                  NavigationRailDestination(icon: Icon(Icons.messenger_outline_rounded), label: Text("Chat")),
-                  NavigationRailDestination(icon: Icon(Icons.notifications_active), label: Text("Notice")),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.emoji_emotions),
+                    label: Text("Mood"),
+                  ),
                   NavigationRailDestination(
                     icon: Icon(Icons.quiz),
                     label: Text("Test"),
                   ),
-                  NavigationRailDestination(icon: Icon(Icons.menu_book), label: Text("Content")),
-
+                  NavigationRailDestination(
+                    icon: Icon(Icons.mood),
+                    label: Text("Diary"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.messenger_outline_rounded),
+                    label: Text("Chat"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.notifications_active),
+                    label: Text("Notice"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.quiz),
+                    label: Text("Test"),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.menu_book),
+                    label: Text("Content"),
+                  ),
                 ],
               ),
             ),
@@ -231,14 +254,31 @@ class _MainScreenState extends State<MainScreen> {
         unselectedLabelStyle: const TextStyle(fontSize: 12),
         elevation: 10,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.emoji_emotions), label: 'Mood',),
-          BottomNavigationBarItem(icon: Icon(Icons.quiz_rounded), label: 'Test',),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.emoji_emotions),
+            label: 'Mood',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.quiz_rounded),
+            label: 'Test',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Diary'),
-          BottomNavigationBarItem(icon: Icon(Icons.messenger_outline_rounded), label: 'Chat'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications_active), label: 'Notice'),
-          BottomNavigationBarItem(icon: Icon(Icons.article_rounded), label: 'Quiz'),
-          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Content'),
-
+          BottomNavigationBarItem(
+            icon: Icon(Icons.messenger_outline_rounded),
+            label: 'Chat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_active),
+            label: 'Notice',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.article_rounded),
+            label: 'Quiz',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.menu_book),
+            label: 'Content',
+          ),
         ],
       ),
     );
@@ -388,9 +428,30 @@ class _MainScreenState extends State<MainScreen> {
         body: Row(
           children: [
             if (isWideScreen) _buildNavigation(context, isDarkMode),
-            Expanded(child: _screens[_selectedIndex]),
+            Expanded(
+              child: Stack(
+                children: [
+                  // Màn hình chính
+                  _screens[_selectedIndex],
+
+                  // NotificationListenerWidget (ẩn, chỉ lắng nghe)
+                  FutureBuilder<int?>(
+                    future: SharedPreferences.getInstance().then(
+                      (prefs) => prefs.getInt('userId'),
+                    ),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const SizedBox.shrink();
+                      final userId = snapshot.data;
+                      if (userId == null) return const SizedBox.shrink();
+                      return NotificationListenerWidget(userId: userId);
+                    },
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
+
         bottomNavigationBar: isWideScreen
             ? null
             : _buildNavigation(context, isDarkMode),
