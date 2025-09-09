@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:trackmentalhealth/models/ChatMessageGroup.dart';
+import 'package:http_parser/http_parser.dart';
 
 import '../../models/ChatMessage.dart';
 import '../../models/Psychologist.dart';
@@ -60,13 +61,14 @@ Future<ChatMessage?> getLastestMsg(int sessionId) async {
   } else if (res.statusCode == 404) {
     return null; // Chưa có tin nhắn
   } else {
-
     throw Exception('Failed to load lastest message');
   }
 }
 
 Future<ChatMessageGroup?> getLastestMsgGroup(int groupId) async {
-  final res = await http.get(Uri.parse('$chatGroupUrl/lastest-message/$groupId'));
+  final res = await http.get(
+    Uri.parse('$chatGroupUrl/lastest-message/$groupId'),
+  );
 
   if (res.statusCode == 200) {
     final jsonData = jsonDecode(res.body);
@@ -77,9 +79,6 @@ Future<ChatMessageGroup?> getLastestMsgGroup(int groupId) async {
     throw Exception('Failed to load latest message');
   }
 }
-
-
-
 
 Future<dynamic> initiateChatSession(int senderId, int receiverId) async {
   final res = await http.post(
@@ -176,7 +175,6 @@ Future<List<Psychologist>> getPsychologists() async {
   }
 }
 
-
 // ==================== AI ====================
 Future<String> chatAI(Map<String, dynamic> data) async {
   final res = await http.post(
@@ -231,20 +229,17 @@ Future<dynamic> saveNotification(Map<String, dynamic> data) async {
   }
 }
 
-Future<dynamic> changeStatusNotification(int id) async {
+Future<void> changeStatusNotification(int id) async {
   final res = await http.put(Uri.parse('${notificationUrl}/changestatus/$id'));
-  if (res.statusCode == 200) {
-    return jsonDecode(res.body);
-  } else {
-    throw Exception('Failed to change notification status');
+
+  if (res.statusCode != 200) {
+    throw Exception('Failed to change notification status: ${res.statusCode}');
   }
 }
 
 Future<dynamic> deleteNotificationById(int id) async {
   final res = await http.delete(Uri.parse('${notificationUrl}/delete/$id'));
-  if (res.statusCode == 200) {
-    return jsonDecode(res.body);
-  } else {
+  if (res.statusCode != 200) {
     throw Exception('Failed to delete notification');
   }
 }
@@ -309,35 +304,49 @@ Future<dynamic> deleteGroupById(int id) async {
 Future<dynamic> createNewGroup(
   Map<String, dynamic> groupData,
   File? file,
-) async {
+) async
+{
   var request = http.MultipartRequest(
     'POST',
     Uri.parse('${chatGroupUrl}/create'),
   );
-  request.fields['chatGroup'] = jsonEncode(groupData);
+
+  // Gửi chatGroup dạng JSON với content-type application/json
+  request.files.add(
+    http.MultipartFile.fromString(
+      'chatGroup',
+      jsonEncode(groupData),
+      contentType: MediaType('application', 'json'),
+    ),
+  );
+
   if (file != null) {
     request.files.add(await http.MultipartFile.fromPath('file', file.path));
   }
+
   var response = await request.send();
+  final res = await http.Response.fromStream(response);
+
+  debugPrint("➡️ Status: ${response.statusCode}");
+  debugPrint("➡️ Body: ${res.body}");
 
   if (response.statusCode == 200) {
-    final res = await http.Response.fromStream(response);
     return jsonDecode(res.body);
   } else {
-    throw Exception('Failed to create group');
+    throw Exception('Failed to create group: ${res.body}');
   }
 }
 
 Future<dynamic> updateGroupById(int id, Map<String, dynamic> data) async {
   final res = await http.put(
-    Uri.parse('${chatGroupUrl}/edit/$id'),
+    Uri.parse('$chatGroupUrl/edit/$id'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode(data),
   );
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
-    throw Exception('Failed to update group');
+    throw Exception('Failed to update group: ${res.body}');
   }
 }
 
