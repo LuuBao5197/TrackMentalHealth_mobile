@@ -326,8 +326,8 @@ class _MainScreenState extends State<MainScreen> {
                   leading: Icon(Icons.logout, color: isDarkMode ? Colors.tealAccent : Colors.teal[800]),
                   title: const Text('Logout'),
                   onTap: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
+                    // final prefs = await SharedPreferences.getInstance();
+                    // await prefs.clear();
                     // await FirebaseAuth.instance.signOut();
                     final googleSignIn = GoogleSignIn();
                     if (await googleSignIn.isSignedIn()) await googleSignIn.signOut();
