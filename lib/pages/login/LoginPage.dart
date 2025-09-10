@@ -61,17 +61,25 @@ class _LoginPageState extends State<LoginPage> {
       // --- 2. Gửi ảnh sang Flask để lấy embedding ---
       final flaskUrl = "${ApiConstants.flaskBaseUrl}/generate-embedding";
       final request = http.MultipartRequest('POST', Uri.parse(flaskUrl))
-        ..files.add(await http.MultipartFile.fromPath('file', pickedFile.path));
+        ..files.add(await http.MultipartFile.fromPath('image', pickedFile.path));
 
       final flaskResponse = await request.send();
       final flaskBody = await flaskResponse.stream.bytesToString();
       if (flaskResponse.statusCode != 200) {
-        setState(() => _error = "Flask error: $flaskBody");
+        String msg;
+        try {
+          final data = jsonDecode(flaskBody);
+          msg = data['error'] ?? "Face not recognized";
+        } catch (_) {
+          msg = "Face not recognized";
+        }
+        setState(() => _error = msg);
         return;
       }
 
+
       final flaskData = jsonDecode(flaskBody);
-      final embedding = List<double>.from(flaskData['embedding']); // Flask trả mảng
+      final embedding = List<double>.from(flaskData); // Flask trả mảng
 
       // --- 3. Gửi email + embedding sang Spring Boot ---
       final response = await http.post(
@@ -355,6 +363,14 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _loginWithFaceId,
                       label: const Text("Login with FaceID"),
                     ),
+                    if (_error != null)   // 👈 thêm dòng này
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
                     TextButton(
                       onPressed: _switchToAnotherAccount,
                       child: const Text("Another Account"),
