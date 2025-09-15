@@ -75,26 +75,24 @@ class _ChatDetailState extends State<ChatDetail> {
       stompService.connect(
         onConnect: (_) {
           stompService.subscribe("/topic/chat/${widget.sessionId}", (frame) {
-            if (frame.body != null) {
-              final dto = ChatMessageDTO.fromRawJson(frame.body!);
-              final isCurrentUser = dto.senderId.toString() == currentUserId;
+            // frame đã là Map<String, dynamic>
+            final dto = ChatMessageDTO.fromMap(frame); // <-- dùng fromMap thay vì fromRawJson
 
-              final textMsg = types.TextMessage(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                text: dto.message,
-                createdAt: DateTime.now().millisecondsSinceEpoch,
-                author: types.User(
-                  id: dto.senderId.toString(),
-                  firstName: dto.senderName,
-                  imageUrl:
-                  isCurrentUser ? currentUserAvatar : widget.user.avatar,
-                ),
-              );
+            final isCurrentUser = dto.senderId.toString() == currentUserId;
 
-              setState(() {
-                messages.insert(0, textMsg);
-              });
-            }
+            final textMsg = types.TextMessage(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              text: dto.message,
+              createdAt: DateTime.now().millisecondsSinceEpoch,
+              author: types.User(
+                id: dto.senderId.toString(),
+                firstName: dto.senderName,
+                imageUrl: isCurrentUser ? currentUserAvatar : widget.user.avatar,
+              ),
+            );
+            setState(() {
+              messages.insert(0, textMsg);
+            });
           });
         },
       );
@@ -150,6 +148,7 @@ class _ChatDetailState extends State<ChatDetail> {
                     sessionId: widget.sessionId.toString(),
                     currentUserId: currentUserId!,
                     currentUserName: widget.user.fullName ?? "User",
+                    isCaller: true
                   ),
                 ),
               );

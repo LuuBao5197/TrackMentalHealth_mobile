@@ -20,13 +20,10 @@ class _AppointmentPageState extends State<AppointmentPage> {
   List<dynamic> appointments = [];
   bool loading = true;
 
-
-  // Pagination states
   int pendingPage = 1;
   int processedPage = 1;
   final int pageSize = 5;
 
-  // Review modal states
   bool showReviewModal = false;
   dynamic selectedAppointment;
   double rating = 0;
@@ -104,20 +101,20 @@ class _AppointmentPageState extends State<AppointmentPage> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return DraggableScrollableSheet(
-              initialChildSize: 0.5,
+              initialChildSize: 0.55,
               minChildSize: 0.35,
               maxChildSize: 0.75,
               builder: (_, controller) {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 10,
-                        offset: Offset(0, -3),
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, -4),
                       ),
                     ],
                   ),
@@ -134,17 +131,12 @@ class _AppointmentPageState extends State<AppointmentPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // Title
                       const Text(
                         'Rate Your Appointment',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
-                      // Stars
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(5, (index) {
@@ -158,13 +150,12 @@ class _AppointmentPageState extends State<AppointmentPage> {
                             icon: Icon(
                               starIndex <= rating ? Icons.star : Icons.star_border,
                               color: Colors.amber,
-                              size: 40,
+                              size: 36,
                             ),
                           );
                         }),
                       ),
                       const SizedBox(height: 12),
-                      // Comment box
                       TextField(
                         maxLines: 4,
                         decoration: InputDecoration(
@@ -175,25 +166,23 @@ class _AppointmentPageState extends State<AppointmentPage> {
                             borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                         ),
                         onChanged: (val) => comment = val,
                       ),
                       const SizedBox(height: 20),
-                      // Submit button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () => submitReview(),
+                          onPressed: submitReview,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepOrange,
+                            backgroundColor: Colors.deepOrangeAccent,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            elevation: 4,
+                            elevation: 6,
                           ),
                           child: const Text(
                             'Submit Review',
@@ -202,7 +191,6 @@ class _AppointmentPageState extends State<AppointmentPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // Cancel button
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton(
@@ -237,7 +225,7 @@ class _AppointmentPageState extends State<AppointmentPage> {
       return;
     }
 
-    setState(() => showReviewModal = true); // optional, show loading
+    setState(() => showReviewModal = true);
     try {
       final userId = widget.userId;
       if (userId == null) {
@@ -251,7 +239,6 @@ class _AppointmentPageState extends State<AppointmentPage> {
         return;
       }
 
-      // Payload review
       final payload = {
         'rating': rating,
         'comment': comment,
@@ -261,14 +248,12 @@ class _AppointmentPageState extends State<AppointmentPage> {
 
       await createReviewByAppointmentId(selectedAppointment['id'], payload);
 
-      // Gửi notification
       final notificationToPsy = NotDTO(
-          selectedAppointment['psychologist']?['usersID']?['id'],
-          'New review submitted by ${selectedAppointment['user']?['fullname'] ?? 'a user'}: $rating/5 stars'
+        selectedAppointment['psychologist']?['usersID']?['id'],
+        'New review submitted by ${selectedAppointment['user']?['fullname'] ?? 'a user'}: $rating/5 stars',
       );
       await saveNotification(notificationToPsy);
 
-      // Cập nhật ngay review trong danh sách appointments
       setState(() {
         appointments = appointments.map((a) {
           if (a['id'] == selectedAppointment['id']) {
@@ -284,10 +269,9 @@ class _AppointmentPageState extends State<AppointmentPage> {
       showToast("Error submitting review", "error");
       print(err);
     } finally {
-      setState(() => showReviewModal = false); // hide loading
+      setState(() => showReviewModal = false);
     }
   }
-
 
   Widget renderTable(List<dynamic> data, String title) {
     final theme = Theme.of(context);
@@ -298,13 +282,13 @@ class _AppointmentPageState extends State<AppointmentPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 16),
-          Text(title,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.primary)),
+          Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.primary)),
           const SizedBox(height: 8),
           Card(
-            elevation: 2,
+            elevation: 3,
             color: theme.cardColor,
             shadowColor: Colors.black26,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Center(
@@ -324,89 +308,83 @@ class _AppointmentPageState extends State<AppointmentPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Text(title,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.primary)),
+        Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colorScheme.primary)),
         const SizedBox(height: 8),
         Card(
-          elevation: 2,
-          color: theme.cardColor,
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           shadowColor: Colors.black26,
-          child: ClipRRect(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                child: DataTable(
-                  headingRowColor: MaterialStateProperty.all(colorScheme.primary.withOpacity(0.1)),
-                  headingTextStyle: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary),
-                  border: TableBorder.all(color: theme.dividerColor, width: 1),
-                  columnSpacing: 24,
-                  dataRowMinHeight: 52,
-                  dataRowMaxHeight: 64,
-                  columns: const [
-                    DataColumn(label: Text('#')),
-                    DataColumn(label: Text('Full name')),
-                    DataColumn(label: Text('Time Start')),
-                    DataColumn(label: Text('Note')),
-                    DataColumn(label: Text('Status')),
-                    DataColumn(label: Text('Actions')),
-                  ],
-                  rows: List.generate(data.length, (index) {
-                    final item = data[index];
-                    final status = item['status'];
-                    final review = item['review'];
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: MaterialStateProperty.all(colorScheme.primary.withOpacity(0.1)),
+              headingTextStyle: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary),
+              border: TableBorder.all(color: theme.dividerColor, width: 1),
+              columnSpacing: 24,
+              dataRowMinHeight: 52,
+              dataRowMaxHeight: 64,
+              columns: const [
+                DataColumn(label: Text('#')),
+                DataColumn(label: Text('Full name')),
+                DataColumn(label: Text('Time Start')),
+                DataColumn(label: Text('Note')),
+                DataColumn(label: Text('Status')),
+                DataColumn(label: Text('Actions')),
+              ],
+              rows: List.generate(data.length, (index) {
+                final item = data[index];
+                final status = item['status'];
+                final review = item['review'];
 
-                    Color statusColor;
-                    switch (status) {
-                      case 'PENDING':
-                        statusColor = Colors.orange;
-                        break;
-                      case 'ACCEPTED':
-                        statusColor = Colors.green;
-                        break;
-                      case 'DECLINED':
-                        statusColor = Colors.red;
-                        break;
-                      default:
-                        statusColor = Colors.grey;
-                    }
+                Color statusColor;
+                switch (status) {
+                  case 'PENDING':
+                    statusColor = Colors.orangeAccent;
+                    break;
+                  case 'ACCEPTED':
+                    statusColor = Colors.green;
+                    break;
+                  case 'DECLINED':
+                    statusColor = Colors.redAccent;
+                    break;
+                  default:
+                    statusColor = Colors.grey;
+                }
 
-                    return DataRow(
-                      color: MaterialStateProperty.resolveWith<Color?>(
-                              (states) => index.isEven ? theme.colorScheme.surfaceVariant.withOpacity(0.2) : null),
-                      cells: [
-                        DataCell(Text('${index + 1}')),
-                        DataCell(Text(item['user']?['fullname'] ?? 'Ẩn danh')),
-                        DataCell(Text(DateTime.tryParse(item['timeStart'] ?? '')?.toLocal().toString() ?? '')),
-                        DataCell(Text(item['note'] ?? 'Không có')),
-                        DataCell(Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(20)),
-                          child: Text(status, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                        )),
-                        DataCell(Row(
-                          children: [
-                            if (status == 'PENDING') ...[
-                              ElevatedButton.icon(
-                                  onPressed: () => handleEdit(item['id']),
-                                  icon: const Icon(Icons.edit, size: 16),
-                                  label: const Text('Edit')),
-                              const SizedBox(width: 6),
-                              ElevatedButton.icon(
-                                  onPressed: () => handleDelete(item['id']),
-                                  icon: const Icon(Icons.delete, size: 16),
-                                  label: const Text('Delete')),
-                            ] else if (status == 'ACCEPTED' && review == null)
-                              OutlinedButton(onPressed: () => handleDone(item), child: const Text('Done'))
-                            else
-                              const Text('Processed'),
-                          ],
-                        )),
+                return DataRow(
+                  color: MaterialStateProperty.resolveWith<Color?>(
+                          (states) => index.isEven ? theme.colorScheme.surfaceVariant.withOpacity(0.15) : null),
+                  cells: [
+                    DataCell(Text('${index + 1}')),
+                    DataCell(Text(item['user']?['fullname'] ?? 'Ẩn danh')),
+                    DataCell(Text(DateTime.tryParse(item['timeStart'] ?? '')?.toLocal().toString() ?? '')),
+                    DataCell(Text(item['note'] ?? 'Không có')),
+                    DataCell(Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(20)),
+                      child: Text(status, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    )),
+                    DataCell(Row(
+                      children: [
+                        if (status == 'PENDING') ...[
+                          ElevatedButton.icon(
+                              onPressed: () => handleEdit(item['id']),
+                              icon: const Icon(Icons.edit, size: 16),
+                              label: const Text('Edit')),
+                          const SizedBox(width: 6),
+                          ElevatedButton.icon(
+                              onPressed: () => handleDelete(item['id']),
+                              icon: const Icon(Icons.delete, size: 16),
+                              label: const Text('Delete')),
+                        ] else if (status == 'ACCEPTED' && review == null)
+                          OutlinedButton(onPressed: () => handleDone(item), child: const Text('Done'))
+                        else
+                          const Text('Processed'),
                       ],
-                    );
-                  }),
-                ),
-              ),
+                    )),
+                  ],
+                );
+              }),
             ),
           ),
         ),
@@ -420,12 +398,15 @@ class _AppointmentPageState extends State<AppointmentPage> {
       children: [
         IconButton(
           onPressed: currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back_ios_new),
         ),
-        Text('Page $currentPage / $totalPages'),
+        Text(
+          'Page $currentPage / $totalPages',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         IconButton(
           onPressed: currentPage < totalPages ? () => onPageChanged(currentPage + 1) : null,
-          icon: const Icon(Icons.arrow_forward),
+          icon: const Icon(Icons.arrow_forward_ios),
         ),
       ],
     );
@@ -449,7 +430,7 @@ class _AppointmentPageState extends State<AppointmentPage> {
     final processedTotalPages = (processedList.length / pageSize).ceil();
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: colorScheme.onPrimary),
@@ -457,17 +438,9 @@ class _AppointmentPageState extends State<AppointmentPage> {
         ),
         title: Text('My Appointments',
             style: TextStyle(
-                color: colorScheme.onPrimary, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                color: colorScheme.onPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
         backgroundColor: colorScheme.primary,
         elevation: 2,
-        shadowColor: Colors.black45,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: colorScheme.onPrimary),
-            tooltip: "Reload",
-            onPressed: fetchAppointments,
-          ),
-        ],
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
@@ -479,28 +452,22 @@ class _AppointmentPageState extends State<AppointmentPage> {
             ElevatedButton.icon(
               onPressed: handleAdd,
               icon: const Icon(Icons.add, size: 20),
-              label: const Text('Add New Appointment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              label: const Text('Add New Appointment',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor: colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                elevation: 3,
+                elevation: 4,
               ),
             ),
             const SizedBox(height: 20),
-
-            // Pending
             renderTable(getPaginatedList(pendingList, pendingPage), 'Pending Appointments'),
             paginationControls(pendingPage, pendingTotalPages, (page) => setState(() => pendingPage = page)),
-
             const SizedBox(height: 16),
-
-            // Processed
             renderTable(getPaginatedList(processedList, processedPage), 'Processed Appointments'),
-            paginationControls(
-                processedPage, processedTotalPages, (page) => setState(() => processedPage = page)),
-
+            paginationControls(processedPage, processedTotalPages, (page) => setState(() => processedPage = page)),
             if (appointments.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(16),
@@ -513,13 +480,6 @@ class _AppointmentPageState extends State<AppointmentPage> {
           ],
         ),
       ),
-      floatingActionButton: showReviewModal
-          ? FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: Colors.deepOrange,
-        child: const Icon(Icons.rate_review, color: Colors.white),
-      )
-          : null,
     );
   }
 }

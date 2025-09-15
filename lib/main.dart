@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
+import 'package:trackmentalhealth/pages/chat/VideoCallPage/PrivateCallPage.dart';
 import 'package:trackmentalhealth/pages/content/permissions.dart';
 
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
@@ -437,15 +438,60 @@ class _MainScreenState extends State<MainScreen> {
                   // NotificationListenerWidget (ẩn, chỉ lắng nghe)
                   FutureBuilder<int?>(
                     future: SharedPreferences.getInstance().then(
-                      (prefs) => prefs.getInt('userId'),
+                          (prefs) => prefs.getInt('userId'),
                     ),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) return const SizedBox.shrink();
                       final userId = snapshot.data;
                       if (userId == null) return const SizedBox.shrink();
-                      return NotificationListenerWidget(userId: userId);
+
+                      return NotificationListenerWidget(
+                        userId: userId,
+                        onEvent: (msg, type) {
+                          if (type == "call" && msg["type"] == "CALL_REQUEST") {
+                            // hiển thị dialog gọi đến
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (_) => AlertDialog(
+                                title: const Text("📞 Incoming call"),
+                                content: Text("From: ${msg['callerName']}"),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop(); // từ chối
+                                      // TODO: gửi tín hiệu CALL_REJECTED về server bằng StompService nếu cần
+                                    },
+                                    child: const Text("Reject"),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      // TODO: gửi tín hiệu CALL_ACCEPTED về server bằng StompService nếu cần
+                                      // Chuyển sang trang call
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => PrivateCallPage(
+                                            sessionId: msg["sessionId"].toString(),
+                                            currentUserId: userId.toString(),
+                                            currentUserName: "User $userId",
+                                            isCaller: false, // callee => luôn false
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text("Accept"),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
+                      );
                     },
-                  ),
+                  )
+
                 ],
               ),
             ),

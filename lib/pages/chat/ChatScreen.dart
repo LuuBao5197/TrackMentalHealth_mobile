@@ -79,7 +79,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     }
   }
 
-
   Future<void> fetchAllPsyRatings() async {
     for (var psy in psychologists) {
       final psyId = psy.id;
@@ -758,44 +757,45 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        const PublicCallPage(paramRoomID: "0000"),
-                  ),
-                );
-              },
-              icon: Icon(
-                Icons.call,
-                size: 16,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              label: Text(
-                'Public Call',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: Theme.of(context).colorScheme.primary),
-                foregroundColor: Theme.of(context).colorScheme.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-              ),
-            ),
-          ),
+          // Padding(
+          //   padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          //   child: OutlinedButton.icon(
+          //     onPressed: () {
+          //       Navigator.push(
+          //         context,
+          //         MaterialPageRoute(
+          //           builder: (context) =>
+          //               const PublicCallPage(),
+          //
+          //         ),
+          //       );
+          //     },
+          //     icon: Icon(
+          //       Icons.call,
+          //       size: 16,
+          //       color: Theme.of(context).colorScheme.primary,
+          //     ),
+          //     label: Text(
+          //       'Public Call',
+          //       style: TextStyle(
+          //         fontSize: 12,
+          //         fontWeight: FontWeight.w600,
+          //         color: Theme.of(context).colorScheme.primary,
+          //       ),
+          //     ),
+          //     style: OutlinedButton.styleFrom(
+          //       side: BorderSide(color: Theme.of(context).colorScheme.primary),
+          //       foregroundColor: Theme.of(context).colorScheme.primary,
+          //       shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(20),
+          //       ),
+          //       padding: const EdgeInsets.symmetric(
+          //         horizontal: 12,
+          //         vertical: 8,
+          //       ),
+          //     ),
+          //   ),
+          // ),
         ],
         bottom: TabBar(
           controller: _tabController,

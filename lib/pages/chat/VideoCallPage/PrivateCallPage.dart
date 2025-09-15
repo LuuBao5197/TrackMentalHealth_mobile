@@ -7,12 +7,16 @@ class PrivateCallPage extends StatefulWidget {
   final String? sessionId;
   final String currentUserId;
   final String currentUserName;
+  final bool isCaller;
+
 
   const PrivateCallPage({
     super.key,
     this.sessionId,
     required this.currentUserId,
     required this.currentUserName,
+    required this.isCaller, //
+
   });
   @override
   State<PrivateCallPage> createState() => _PrivateCallPageState();
