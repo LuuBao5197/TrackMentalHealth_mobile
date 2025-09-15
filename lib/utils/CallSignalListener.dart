@@ -48,30 +48,42 @@ class _CallSignalListenerState extends State<CallSignalListener> {
       case "CALL_ACCEPTED":
         if (signal["callerId"] == widget.currentUserId) {
           // caller join call
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => PrivateCallPage(
-                sessionId: widget.sessionId,
-                currentUserId: widget.currentUserId,
-                currentUserName: widget.currentUserName,
-                isCaller: true,
-              ),
-            ),
-          );
+          Future.delayed(Duration(milliseconds: 100), () {
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PrivateCallPage(
+                    sessionId: widget.sessionId,
+                    currentUserId: widget.currentUserId,
+                    currentUserName: widget.currentUserName,
+                    isCaller: true,
+                  ),
+                ),
+              );
+            }
+          });
         }
         break;
 
       case "CALL_REJECTED":
         if (signal["callerId"] == widget.currentUserId) {
           showToast("📵 Call was rejected",'error');
-          Navigator.popUntil(context, ModalRoute.withName("/chat/${widget.sessionId}"));
+          Future.delayed(Duration(milliseconds: 100), () {
+            if (mounted) {
+              Navigator.popUntil(context, ModalRoute.withName("/chat/${widget.sessionId}"));
+            }
+          });
         }
         break;
 
       case "CALL_ENDED":
         showToast("📵 Call ended",'warning');
-        Navigator.popUntil(context, ModalRoute.withName("/chat/${widget.sessionId}"));
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            Navigator.popUntil(context, ModalRoute.withName("/chat/${widget.sessionId}"));
+          }
+        });
         break;
     }
   }
@@ -95,17 +107,22 @@ class _CallSignalListenerState extends State<CallSignalListener> {
                 },
               );
               Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PrivateCallPage(
-                    sessionId: widget.sessionId,
-                    currentUserId: widget.currentUserId,
-                    currentUserName: widget.currentUserName,
-                    isCaller: false,
-                  ),
-                ),
-              );
+              // Use a delayed push to avoid Navigator lock issues
+              Future.delayed(Duration(milliseconds: 100), () {
+                if (mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PrivateCallPage(
+                        sessionId: widget.sessionId,
+                        currentUserId: widget.currentUserId,
+                        currentUserName: widget.currentUserName,
+                        isCaller: false,
+                      ),
+                    ),
+                  );
+                }
+              });
             },
             child: const Text("Accept"),
           ),

@@ -6,10 +6,14 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import 'package:trackmentalhealth/pages/chat/ChatScreen.dart';
 import 'package:trackmentalhealth/pages/chat/VideoCallPage/PrivateCallPage.dart';
 import 'package:trackmentalhealth/pages/content/permissions.dart';
+import 'package:trackmentalhealth/utils/NotificationListenerWidget.dart';
 
 import 'package:trackmentalhealth/core/constants/api_constants.dart';
 import 'package:trackmentalhealth/pages/diary/diary_history_page.dart';
@@ -54,6 +58,7 @@ class TrackMentalHealthApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
+
       title: 'Track Mental Health',
       debugShowCheckedModeBanner: false,
       themeMode: themeProvider.themeMode,
@@ -110,7 +115,7 @@ class _MainScreenState extends State<MainScreen> {
   String? fullname;
   String? avatarUrl;
   bool _loadingProfile = true;
-
+  int? _userId;
 
   bool hasNewNotification = false;
 
@@ -158,6 +163,7 @@ class _MainScreenState extends State<MainScreen> {
         setState(() {
           fullname = data['fullname'] ?? "User";
           avatarUrl = avatar;
+          _userId = userId;
           _loadingProfile = false;
         });
 
@@ -174,6 +180,80 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  Widget _buildNotificationListener() {
+    if (_userId == null) return const SizedBox.shrink();
+    
+    return NotificationListenerWidget(
+      userId: _userId!,
+      onEvent: (msg, type) {
+        if (type == "call" && msg["type"] == "CALL_REQUEST") {
+          // Use a delayed execution to avoid Navigator lock issues
+          Future.delayed(Duration(milliseconds: 200), () {
+            if (!mounted) return;
+            
+            try {
+              // hiển thị dialog gọi đến
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => AlertDialog(
+                  title: const Text("📞 Incoming call"),
+                  content: Text("From: ${msg['callerName']}"),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        try {
+                          Navigator.of(context).pop(); // từ chối
+                        } catch (e) {
+                          print('Error popping dialog: $e');
+                        }
+                        // TODO: gửi tín hiệu CALL_REJECTED về server bằng StompService nếu cần
+                      },
+                      child: const Text("Reject"),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        try {
+                          Navigator.of(context).pop();
+                        } catch (e) {
+                          print('Error popping dialog: $e');
+                        }
+                        // TODO: gửi tín hiệu CALL_ACCEPTED về server bằng StompService nếu cần
+                        // Chuyển sang trang call
+                        Future.delayed(Duration(milliseconds: 100), () {
+                          if (mounted) {
+                            try {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PrivateCallPage(
+                                    sessionId: msg["sessionId"].toString(),
+                                    currentUserId: _userId.toString(),
+                                    currentUserName: "User $_userId",
+                                    isCaller: false, // callee => luôn false
+                                  ),
+                                ),
+                              );
+                            } catch (e) {
+                              print('Error navigating to call page: $e');
+                            }
+                          }
+                        });
+                      },
+                      child: const Text("Accept"),
+                    ),
+                  ],
+                ),
+              );
+            } catch (e) {
+              print('Error showing call dialog: $e');
+            }
+          });
+        }
+      },
+    );
   }
 
   Widget _buildNavigation(BuildContext context, bool isDarkMode) {
@@ -379,12 +459,25 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   title: const Text('Profile'),
                   onTap: () async {
-                    Navigator.pop(context);
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                    );
-                    if (result == true) _loadProfile();
+                    try {
+                      Navigator.pop(context);
+                    } catch (e) {
+                      print('Error popping drawer: $e');
+                    }
+                    // Use a delayed push to avoid Navigator lock issues
+                    Future.delayed(Duration(milliseconds: 100), () async {
+                      if (mounted) {
+                        try {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                          );
+                          if (result == true) _loadProfile();
+                        } catch (e) {
+                          print('Error navigating to profile: $e');
+                        }
+                      }
+                    });
                   },
                 ),
                 ListTile(
@@ -399,7 +492,11 @@ class _MainScreenState extends State<MainScreen> {
                         content: Text('Settings Page chưa được tạo.'),
                       ),
                     );
-                    Navigator.pop(context);
+                    try {
+                      Navigator.pop(context);
+                    } catch (e) {
+                      print('Error popping drawer: $e');
+                    }
                   },
                 ),
                 ListTile(
@@ -416,10 +513,14 @@ class _MainScreenState extends State<MainScreen> {
                     if (await googleSignIn.isSignedIn())
                       await googleSignIn.signOut();
                     if (!mounted) return;
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
-                    );
+                    try {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginPage()),
+                      );
+                    } catch (e) {
+                      print('Error navigating to login: $e');
+                    }
                   },
                 ),
               ],
@@ -436,61 +537,7 @@ class _MainScreenState extends State<MainScreen> {
                   _screens[_selectedIndex],
 
                   // NotificationListenerWidget (ẩn, chỉ lắng nghe)
-                  FutureBuilder<int?>(
-                    future: SharedPreferences.getInstance().then(
-                          (prefs) => prefs.getInt('userId'),
-                    ),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const SizedBox.shrink();
-                      final userId = snapshot.data;
-                      if (userId == null) return const SizedBox.shrink();
-
-                      return NotificationListenerWidget(
-                        userId: userId,
-                        onEvent: (msg, type) {
-                          if (type == "call" && msg["type"] == "CALL_REQUEST") {
-                            // hiển thị dialog gọi đến
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (_) => AlertDialog(
-                                title: const Text("📞 Incoming call"),
-                                content: Text("From: ${msg['callerName']}"),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop(); // từ chối
-                                      // TODO: gửi tín hiệu CALL_REJECTED về server bằng StompService nếu cần
-                                    },
-                                    child: const Text("Reject"),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                      // TODO: gửi tín hiệu CALL_ACCEPTED về server bằng StompService nếu cần
-                                      // Chuyển sang trang call
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => PrivateCallPage(
-                                            sessionId: msg["sessionId"].toString(),
-                                            currentUserId: userId.toString(),
-                                            currentUserName: "User $userId",
-                                            isCaller: false, // callee => luôn false
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: const Text("Accept"),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                        },
-                      );
-                    },
-                  )
+                  _buildNotificationListener(),
 
                 ],
               ),

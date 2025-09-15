@@ -24,9 +24,10 @@ dependencies:
   flutter_chat_ui: ^1.6.0
   flutter_chat_types: ^3.6.1
   fluttertoast: ^8.2.2
-  zego_uikit_prebuilt_call: ^4.13.12
-  zego_uikit_prebuilt_video_conference: ^2.10.2
-  zego_uikit_signaling_plugin: ^2.7.5
+  url_launcher: ^6.2.2
+  webview_flutter: ^4.4.2
+  webview_flutter_android: ^3.12.1
+  webview_flutter_wkwebview: ^3.9.4
 
   uuid: ^4.5.1
   #  stomp_dart_client: ^1.0.0
@@ -41,7 +42,6 @@ dependencies:
   camera: ^0.10.2+2
   fl_chart: ^0.68.0
   intl: ^0.20.2
-  zego_express_engine: ^3.20.0
   flutter_html: ^3.0.0
 
 
