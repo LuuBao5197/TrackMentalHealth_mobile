@@ -7,14 +7,16 @@ import '../../../core/constants/chat_api.dart';
 import '../../../helper/UserSession.dart';
 import '../../../utils/showToast.dart';
 
-class CreateAppointment extends StatefulWidget {
-  const CreateAppointment({Key? key}) : super(key: key);
+class UpdateAppointment extends StatefulWidget {
+  final int appointmentId;
+  const UpdateAppointment({Key? key, required this.appointmentId})
+      : super(key: key);
 
   @override
-  State<CreateAppointment> createState() => _CreateAppointmentPageState();
+  State<UpdateAppointment> createState() => _UpdateAppointmentPageState();
 }
 
-class _CreateAppointmentPageState extends State<CreateAppointment> {
+class _UpdateAppointmentPageState extends State<UpdateAppointment> {
   final _formKey = GlobalKey<FormState>();
 
   List<dynamic> psychologists = [];
@@ -25,17 +27,13 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
   TextEditingController noteController = TextEditingController();
 
   bool loading = false;
+  bool initialLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _setInitialDateTime();
     fetchPsychologists();
-  }
-
-  void _setInitialDateTime() {
-    final now = DateTime.now().toLocal();
-    timeStartController.text = DateFormat("yyyy-MM-dd'T'HH:mm").format(now);
+    fetchAppointmentDetail();
   }
 
   Future<void> fetchPsychologists() async {
@@ -50,7 +48,25 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
     }
   }
 
-  Future<void> handleSubmit() async {
+  Future<void> fetchAppointmentDetail() async {
+    try {
+      final res = await getAppointmentById(widget.appointmentId);
+      // assuming response contains: id, timeStart, note, psychologist{id}, etc.
+      setState(() {
+        timeStartController.text = res["timeStart"] ?? "";
+        noteController.text = res["note"] ?? "";
+        selectedPsychologistId = res["psychologist"]["id"].toString();
+        selectedPsyUserId = res["psychologist"]["usersID"]["id"];
+        initialLoading = false;
+      });
+    } catch (e) {
+      print("Error fetchAppointmentDetail: $e");
+      showToast("Failed to load appointment details", "error");
+      if (mounted) Navigator.pop(context);
+    }
+  }
+
+  Future<void> handleUpdate() async {
     if (!_formKey.currentState!.validate()) return;
 
     final currentUserId = await UserSession.getUserId();
@@ -60,8 +76,9 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
     }
 
     final payload = {
+      "id": widget.appointmentId,
       "timeStart": timeStartController.text,
-      "status": "PENDING",
+      "status": "PENDING", // can be kept or changed depending on your flow
       "note": noteController.text.toString(),
       "user": {"id": currentUserId},
       "psychologist": {"id": int.parse(selectedPsychologistId!)},
@@ -70,19 +87,19 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
     try {
       setState(() => loading = true);
 
-      print("Payload JSON: ${jsonEncode(payload)}");
+      print("Update Payload JSON: ${jsonEncode(payload)}");
 
-      await saveAppointment(payload);
-      showToast("Appointment created successfully", "success");
+      await updateAppointment(widget.appointmentId, payload);
+      showToast("Appointment updated successfully", "success");
 
       // Send notifications
       final notUser = NotDTO(
         currentUserId,
-        "New appointment created successfully",
+        "Your appointment has been updated successfully",
       );
       final notPsy = NotDTO(
         selectedPsyUserId!,
-        "You have a new appointment invitation from user $currentUserId at ${timeStartController.text}",
+        "User $currentUserId updated an appointment at ${timeStartController.text}",
       );
       await Future.wait([saveNotification(notUser), saveNotification(notPsy)]);
 
@@ -93,7 +110,7 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
       if (e.toString().contains("CONFLICT")) {
         showToast("This appointment already exists", "error");
       }
-      print("Submit error: $e");
+      print("Update error: $e");
     } finally {
       setState(() => loading = false);
     }
@@ -113,7 +130,7 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Create Appointment",
+          "Update Appointment",
           style: TextStyle(
             color: colorScheme.onPrimary,
             fontWeight: FontWeight.bold,
@@ -122,7 +139,9 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
         centerTitle: true,
         backgroundColor: colorScheme.primary,
       ),
-      body: loading
+      body: initialLoading
+          ? const Center(child: CircularProgressIndicator())
+          : loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -178,8 +197,9 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
                         }
                       }
                     },
-                    validator: (v) =>
-                    v == null || v.isEmpty ? "Please select time" : null,
+                    validator: (v) => v == null || v.isEmpty
+                        ? "Please select time"
+                        : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -189,7 +209,8 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
                     maxLines: 3,
                     decoration: InputDecoration(
                       labelText: "Note",
-                      prefixIcon: const Icon(Icons.note_alt_outlined),
+                      prefixIcon:
+                      const Icon(Icons.note_alt_outlined),
                       hintText: "Enter your note here...",
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -215,16 +236,7 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
                         child: Text(p.usersID.fullName ?? "Unknown"),
                       );
                     }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedPsychologistId = value;
-                        final selected = psychologists.firstWhere(
-                              (p) => p.id.toString() == value,
-                          orElse: () => null,
-                        );
-                        selectedPsyUserId = selected?.usersID?.id;
-                      });
-                    },
+                  onChanged: null,
                     validator: (v) =>
                     v == null ? "Please select a psychologist" : null,
                   ),
@@ -262,9 +274,9 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          onPressed: handleSubmit,
+                          onPressed: handleUpdate,
                           child: Text(
-                            "Create",
+                            "Update",
                             style: TextStyle(
                               fontSize: 16,
                               color: colorScheme.onPrimary,
