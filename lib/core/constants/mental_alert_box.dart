@@ -39,7 +39,7 @@ class _MentalAlertBoxState extends State<MentalAlertBox> {
       } else {
         setState(() {
           result = {
-            "description": "Không thể lấy thông tin phân tích tâm lý.",
+            "description": "Unable to fetch mental health analysis.",
             "suggestion": null,
           };
           loading = false;
@@ -48,7 +48,7 @@ class _MentalAlertBoxState extends State<MentalAlertBox> {
     } catch (e) {
       setState(() {
         result = {
-          "description": "Không thể lấy thông tin phân tích tâm lý.",
+          "description": "Unable to fetch mental health analysis.",
           "suggestion": null,
         };
         loading = false;
@@ -61,30 +61,48 @@ class _MentalAlertBoxState extends State<MentalAlertBox> {
     if (loading) {
       return const Padding(
         padding: EdgeInsets.all(8.0),
-        child: Text("Đang phân tích dữ liệu tâm lý..."),
+        child: Text("Analyzing mental health data..."),
       );
     }
 
+    final isStable = result?["level"] == 1;
+
     return Card(
-      color: Colors.amber.shade100,
+      color: isStable ? Colors.green.shade100 : Colors.amber.shade100,
       margin: const EdgeInsets.only(top: 16),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "📢 Cảnh báo sức khỏe tinh thần",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            Text(
+              isStable
+                  ? "💡 Your mental state is stable"
+                  : "📢 Mental Health Alert",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
-            Text(result?["description"] ?? "Không có mô tả."),
+            Text(result?["description"] ?? "No description available."),
 
-            // Nếu là gợi ý test
+            // Motivation suggestion
+            if (result?["suggestion"]?["type"] == "motivation") ...[
+              const SizedBox(height: 12),
+              const Text(
+                "🌱",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                  fontSize: 16,
+                ),
+              ),
+              Text(result?["suggestion"]["message"] ?? ""),
+            ],
+
+            // Suggested test
             if (result?["suggestion"]?["type"] == "test") ...[
               const SizedBox(height: 12),
               Text(
-                "🧪 Gợi ý bài test phù hợp: ${result?["suggestion"]["testTitle"] ?? ""}",
+                "🧪 Suggested Test: ${result?["suggestion"]["testTitle"] ?? ""}",
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               Text(result?["suggestion"]["testDescription"] ?? ""),
@@ -101,19 +119,33 @@ class _MentalAlertBoxState extends State<MentalAlertBox> {
                   foregroundColor: Colors.blue,
                   side: const BorderSide(color: Colors.blue),
                 ),
-                child: const Text("👉 Làm bài test ngay"),
+                child: const Text("👉 Take the test now"),
               ),
             ],
 
-            // Nếu là cảnh báo khẩn cấp
+            // Emergency alert
             if (result?["suggestion"]?["type"] == "emergency") ...[
               const SizedBox(height: 12),
               const Text(
-                "🚨 Cảnh báo khẩn cấp",
+                "🚨 Emergency Alert",
                 style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
               ),
               Text(result?["suggestion"]["message"] ?? ""),
             ],
+            if (result?["level"] == 4) ...[
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, "/user/doTest");
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade100,
+                  foregroundColor: Colors.red.shade900,
+                ),
+                icon: const Icon(Icons.medical_services),
+                label: const Text("Talk to a doctor"),
+              ),
+            ]
           ],
         ),
       ),

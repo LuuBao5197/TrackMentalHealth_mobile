@@ -9,13 +9,31 @@ const String baseUrl = "http://${ApiConstants.ipLocal}:9999/api";
 Future<Map<String, String>> getHeaders() async {
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString("token");
-  if (token == null) throw Exception("Token chưa được lưu");
+  if (token == null) throw Exception("Token not saved");
 
   return {
     "Content-Type": "application/json",
     "Authorization": "Bearer $token",
   };
 }
+
+// 🔹 Hàm parse lỗi chung, lấy message từ backend nếu có
+String _parseError(http.Response res) {
+  if (res.body.isEmpty) {
+    return "Server error (${res.statusCode})";
+  }
+  try {
+    final data = jsonDecode(res.body);
+    if (data is Map<String, dynamic> && data.containsKey("message")) {
+      return data["message"];
+    }
+    return data.toString();
+  } catch (_) {
+    // nếu body không phải JSON, trả thẳng text
+    return res.body;
+  }
+}
+
 
 Future<List<dynamic>> getMoodLevels() async {
   final headers = await getHeaders();
@@ -24,7 +42,7 @@ Future<List<dynamic>> getMoodLevels() async {
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
-    throw Exception("Không thể lấy danh sách mức cảm xúc");
+    throw Exception(_parseError(res));
   }
 }
 
@@ -36,7 +54,7 @@ Future<Map<String, dynamic>?> getTodayMood() async {
     if (res.body.isEmpty || res.body == "null") return null;
     return jsonDecode(res.body);
   } else {
-    throw Exception("Không thể lấy mood hôm nay");
+    throw Exception(_parseError(res));
   }
 }
 
@@ -51,7 +69,7 @@ Future<Map<String, dynamic>> createMood(Map<String, dynamic> mood) async {
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
-    throw Exception("Không thể tạo mood mới");
+    throw Exception(_parseError(res)); // lấy đúng message từ backend
   }
 }
 
@@ -66,7 +84,7 @@ Future<Map<String, dynamic>> updateMood(int id, Map<String, dynamic> mood) async
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
-    throw Exception("Không thể cập nhật mood");
+    throw Exception(_parseError(res)); // lấy message backend khi status != 200
   }
 }
 
@@ -81,7 +99,7 @@ Future<Map<String, dynamic>?> getMoodByUserAndDate(int userId, String date) asyn
     if (res.body.isEmpty || res.body == "null") return null;
     return jsonDecode(res.body);
   } else {
-    throw Exception("Không thể lấy mood theo user & date");
+    throw Exception(_parseError(res));
   }
 }
 
@@ -92,7 +110,7 @@ Future<List<dynamic>> getMyMoods() async {
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
-    throw Exception("Không thể lấy lịch sử moods");
+    throw Exception(_parseError(res));
   }
 }
 
@@ -106,7 +124,7 @@ Future<Map<String, dynamic>> getMyMoodsPaged({int page = 0, int size = 5}) async
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
-    throw Exception("Không thể lấy moods phân trang");
+    throw Exception(_parseError(res));
   }
 }
 
@@ -117,7 +135,6 @@ Future<Map<String, dynamic>> getMoodStatistics() async {
   if (res.statusCode == 200) {
     return jsonDecode(res.body) as Map<String, dynamic>;
   } else {
-    throw Exception("Không thể lấy thống kê moods");
+    throw Exception(_parseError(res));
   }
 }
-
