@@ -178,9 +178,9 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildNavigation(BuildContext context, bool isDarkMode) {
     final isWideScreen = MediaQuery.of(context).size.width >= 600;
 
-    final backgroundColor = isDarkMode ? Colors.grey.shade900 : Colors.white;
+    final backgroundColor = isDarkMode ? Colors.white : Colors.white;
     final selectedColor = Colors.tealAccent;
-    final unselectedColor = isDarkMode ? Colors.white70 : Colors.grey;
+    final unselectedColor = isDarkMode ? Colors.greenAccent : Colors.black;
 
     if (isWideScreen) {
       return AnimatedContainer(
@@ -244,7 +244,7 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _selectedIndex,
         onTap: _onTabTapped,
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         selectedItemColor: selectedColor,
         unselectedItemColor: unselectedColor,
         selectedLabelStyle: const TextStyle(
@@ -384,21 +384,6 @@ class _MainScreenState extends State<MainScreen> {
                       MaterialPageRoute(builder: (_) => const ProfileScreen()),
                     );
                     if (result == true) _loadProfile();
-                  },
-                ),
-                ListTile(
-                  leading: Icon(
-                    Icons.settings,
-                    color: isDarkMode ? Colors.tealAccent : Colors.teal[800],
-                  ),
-                  title: const Text('Settings'),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Settings Page chưa được tạo.'),
-                      ),
-                    );
-                    Navigator.pop(context);
                   },
                 ),
                 ListTile(

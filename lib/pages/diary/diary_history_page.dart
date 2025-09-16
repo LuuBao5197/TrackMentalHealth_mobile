@@ -22,13 +22,13 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
 
   Future<void> fetchDiaries() async {
     try {
-      final data = await DiaryApi.getDiaries(); // ✅ Gọi đúng class
+      final data = await DiaryApi.getDiaries();
       setState(() {
         diaries = data;
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể tải nhật ký')),
+        const SnackBar(content: Text('Unable to load diary entries')),
       );
     }
   }
@@ -43,7 +43,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
 
     if (!isSameDay) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chỉ được chỉnh sửa nhật ký trong ngày hôm nay.')),
+        const SnackBar(content: Text('You can only edit today\'s diary entry.')),
       );
       return;
     }
@@ -60,9 +60,8 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
       await DiaryApi.updateDiary(
         editingDiary!['id'],
         updatedContent,
-        editingDiary!['date'], // giữ nguyên date cũ
+        editingDiary!['date'],
       );
-
 
       setState(() {
         diaries = diaries.map((d) {
@@ -75,7 +74,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('❌ Cập nhật thất bại')),
+        const SnackBar(content: Text('❌ Update failed')),
       );
     }
   }
@@ -84,17 +83,16 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('📖 Lịch Sử Nhật Ký'),
+        title: const Text('📖 Diary History'),
       ),
       body: diaries.isEmpty
-          ? const Center(child: Text('Chưa có nhật ký nào.'))
+          ? const Center(child: Text('No diary entries yet.'))
           : ListView.builder(
         padding: const EdgeInsets.all(12),
         itemCount: diaries.length,
         itemBuilder: (context, index) {
           final diary = diaries[index];
 
-          // Lấy date an toàn
           final dateStr = diary['date']?.toString() ?? '';
           DateTime diaryDate;
           try {
@@ -103,7 +101,6 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
             diaryDate = DateTime.now();
           }
 
-          // Lấy content an toàn
           final content = diary['content']?.toString() ?? '';
 
           final today = DateTime.now();
@@ -131,9 +128,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
             ),
           );
         },
-
       ),
-      // Nút lưu nhanh khi đang chỉnh sửa
       floatingActionButton: editingDiary != null
           ? FloatingActionButton(
         backgroundColor: Colors.green,
@@ -141,7 +136,6 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
         onPressed: handleSave,
       )
           : null,
-      // Form chỉnh sửa
       bottomSheet: editingDiary != null
           ? Container(
         color: Colors.white,
@@ -150,7 +144,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              '📝 Chỉnh sửa nhật ký',
+              '📝 Edit Diary Entry',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
@@ -158,7 +152,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
               maxLines: 5,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: 'Nhập nội dung mới...',
+                hintText: 'Enter new content...',
               ),
               controller: TextEditingController(text: updatedContent)
                 ..selection = TextSelection.fromPosition(
@@ -169,7 +163,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
             const SizedBox(height: 8),
             ElevatedButton(
               onPressed: handleSave,
-              child: const Text('Lưu thay đổi'),
+              child: const Text('Save Changes'),
             ),
           ],
         ),

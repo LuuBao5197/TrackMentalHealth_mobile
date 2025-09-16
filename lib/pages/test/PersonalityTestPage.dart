@@ -70,6 +70,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
     pageController.jumpToPage(index);
     setState(() => currentQuestionIndex = index);
   }
+
   String getResultText() {
     final results = testData!['results'];
     for (var result in results) {
@@ -78,7 +79,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
         return result['resultText'];
       }
     }
-    return "Không xác định được kết quả.";
+    return "Result could not be determined.";
   }
 
   Future<void> saveResult() async {
@@ -117,12 +118,12 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint('✅ Kết quả đã được lưu thành công');
+        debugPrint('✅ Result saved successfully');
       } else {
-        debugPrint('❌ Lỗi khi lưu: ${response.statusCode} - ${response.body}');
+        debugPrint('❌ Error saving result: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      debugPrint('❗ Lỗi kết nối: $e');
+      debugPrint('❗ Connection error: $e');
     }
   }
 
@@ -133,7 +134,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
     if (unanswered.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("⚠️ Bạn chưa trả lời ${unanswered.length} câu hỏi."),
+          content: Text("⚠️ You have not answered ${unanswered.length} questions."),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -167,7 +168,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              "Danh sách câu hỏi",
+              "Question List",
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -203,8 +204,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
                       ),
                       child: Text(
                         "${q['questionOrder']}",
-                        style: TextStyle(
-                            color: isDark ? Colors.white : Colors.black87),
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                       ),
                     ),
                   );
@@ -216,7 +216,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange, foregroundColor: Colors.white),
               onPressed: () => Navigator.pop(context),
-              child: const Text("Đóng"),
+              child: const Text("Close"),
             ),
           ],
         ),
@@ -235,7 +235,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Câu ${currentQuestionIndex + 1}/${testData!['questions'].length}",
+                "Question ${currentQuestionIndex + 1}/${testData!['questions'].length}",
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -298,7 +298,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
         children: [
           const SizedBox(height: 20),
           Text(
-            "🎉 Kết quả của bạn:",
+            "🎉 Your Result:",
             style: TextStyle(
                 fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
           ),
@@ -319,7 +319,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
                 isFinished = false;
               });
             },
-            child: const Text("Làm lại"),
+            child: const Text("Retake Test"),
           ),
         ],
       ),
@@ -336,7 +336,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
       return Scaffold(
         body: Center(
             child: Text(
-              "Đã xảy ra lỗi khi tải dữ liệu.",
+              "Error occurred while loading data.",
               style: TextStyle(color: isDark ? Colors.white : Colors.black87),
             )),
       );
@@ -348,8 +348,8 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
       backgroundColor: isDark ? Colors.grey.shade900 : Colors.white,
       appBar: AppBar(
         backgroundColor: isDark ? Colors.grey.shade900 : Colors.blue,
-        foregroundColor: isDark ? Colors.white : Colors.white,
-        title: Text(testData!['title'] ?? "Bài kiểm tra"),
+        foregroundColor: Colors.white,
+        title: Text(testData!['title'] ?? "Personality Test"),
         actions: [
           IconButton(
             icon: const Icon(Icons.list_alt),
@@ -421,7 +421,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
                       backgroundColor: Colors.orange,
                     ),
                     child: const Text(
-                      "NỘP BÀI",
+                      "SUBMIT",
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -448,7 +448,7 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
                   backgroundColor: Colors.orange,
                 ),
                 child: const Text(
-                  "NỘP BÀI",
+                  "SUBMIT",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -459,8 +459,4 @@ class _PersonalityTestPageState extends State<PersonalityTestPage> {
       ),
     );
   }
-
-
 }
-
-

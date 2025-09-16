@@ -19,13 +19,13 @@ class _WriteDiaryPageState extends State<WriteDiaryPage> {
       http.Response res = await DiaryApi.createDiary(_contentController.text);
 
       if (res.statusCode == 200 || res.statusCode == 201) {
-        _showMessage('📝 Ghi nhật ký thành công!');
+        _showMessage('📝 Diary entry saved successfully!');
         Navigator.pushReplacementNamed(context, '/history');
       } else {
-        _showMessage('❌ Lỗi: ${res.statusCode}');
+        _showMessage('❌ Error: ${res.statusCode}');
       }
     } catch (e) {
-      _showMessage('❌ Đã có lỗi: $e');
+      _showMessage('❌ An error occurred: $e');
     } finally {
       setState(() => _loading = false);
     }
@@ -41,7 +41,7 @@ class _WriteDiaryPageState extends State<WriteDiaryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🧘‍♀️ Ghi Nhật Ký Cảm Xúc'),
+        title: const Text('🧘‍♀️ Write Mood Diary'),
         backgroundColor: Colors.teal,
       ),
       body: Padding(
@@ -62,20 +62,20 @@ class _WriteDiaryPageState extends State<WriteDiaryPage> {
                     expands: true,
                     decoration: const InputDecoration(
                       hintText:
-                      'Viết ra những điều bạn đang nghĩ, đang cảm nhận...',
+                      'Write down your thoughts and feelings...',
                       border: OutlineInputBorder(),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // Nút Lưu nhật ký
+                // Save diary button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: _loading ? null : _handleSave,
                     icon: const Icon(Icons.save),
-                    label: Text(_loading ? 'Đang lưu...' : '💾 Lưu Nhật Ký'),
+                    label: Text(_loading ? 'Saving...' : '💾 Save Diary'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.teal,
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -86,7 +86,7 @@ class _WriteDiaryPageState extends State<WriteDiaryPage> {
 
                 const SizedBox(height: 10),
 
-                // Nút Xem lịch sử nhật ký
+                // View diary history button
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -94,14 +94,13 @@ class _WriteDiaryPageState extends State<WriteDiaryPage> {
                       Navigator.pushNamed(context, '/history');
                     },
                     icon: const Icon(Icons.history),
-                    label: const Text('📜 Xem Lịch Sử Nhật Ký'),
+                    label: const Text('📜 View Diary History'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       textStyle: const TextStyle(fontSize: 16),
                     ),
                   ),
-                )
-
+                ),
               ],
             ),
           ),

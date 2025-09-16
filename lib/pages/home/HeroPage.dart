@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/mood_api.dart';
-import 'mood_history_page.dart'; // <-- Đảm bảo đường dẫn đúng!
+import 'mood_history_page.dart'; // <-- Ensure the path is correct!
 
 class HeroPage extends StatefulWidget {
   const HeroPage({super.key});
@@ -17,13 +17,13 @@ class _HeroPageState extends State<HeroPage> {
   Map<String, dynamic>? todayMood;
   String aiSuggestion = '';
 
-  /// 🧠 Map tên cảm xúc sang icon emoji
+  /// 🧠 Map mood name to emoji
   final Map<String, String> moodIcons = {
-    "Rất tệ": "😢",
-    "Tệ": "😟",
-    "Bình thường": "😐",
-    "Vui": "😊",
-    "Rất vui": "😄",
+    "Very bad": "😢",
+    "Bad": "😟",
+    "Normal": "😐",
+    "Happy": "😊",
+    "Very happy": "😄",
   };
 
   @override
@@ -41,7 +41,7 @@ class _HeroPageState extends State<HeroPage> {
         moodLevels = levels;
       });
     } catch (e) {
-      print("❌ Lỗi khi lấy danh sách mức cảm xúc: $e");
+      print("❌ Error loading mood levels: $e");
     }
   }
 
@@ -57,13 +57,15 @@ class _HeroPageState extends State<HeroPage> {
         });
       }
     } catch (e) {
-      print("❌ Lỗi khi lấy mood hôm nay: $e");
+      print("❌ Error loading today's mood: $e");
     }
   }
 
   Future<void> handleSubmit() async {
     if (selectedMoodId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn cảm xúc')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a mood')),
+      );
       return;
     }
 
@@ -85,27 +87,27 @@ class _HeroPageState extends State<HeroPage> {
           : await createMood(body);
 
       setState(() {
-        aiSuggestion = result["aiSuggestion"] ?? "✅ Cập nhật thành công";
+        aiSuggestion = result["aiSuggestion"] ?? "✅ Updated successfully";
         todayMood = result;
       });
 
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text("Goi y"),
+          title: const Text("AI Suggestion"),
           content: Text(aiSuggestion),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Đóng"),
+              child: const Text("Close"),
             ),
           ],
         ),
       );
     } catch (e) {
-      print("❌ Lỗi tạo/cập nhật cảm xúc: $e");
+      print("❌ Error creating/updating mood: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Lỗi khi ghi nhận cảm xúc.")),
+        const SnackBar(content: Text("Error saving mood.")),
       );
     } finally {
       setState(() => loading = false);
@@ -116,7 +118,7 @@ class _HeroPageState extends State<HeroPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Ghi nhận cảm xúc"),
+        title: const Text("Mood Tracker"),
         backgroundColor: Colors.teal,
       ),
       body: Padding(
@@ -128,8 +130,8 @@ class _HeroPageState extends State<HeroPage> {
             children: [
               Text(
                 todayMood != null
-                    ? "💬 Cảm xúc của bạn hôm nay"
-                    : "💬 Hôm nay bạn cảm thấy thế nào?",
+                    ? "💬 Your mood today"
+                    : "💬 How are you feeling today?",
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
@@ -179,15 +181,13 @@ class _HeroPageState extends State<HeroPage> {
                   );
                 }).toList(),
               ),
-
-
               const SizedBox(height: 16),
               TextField(
                 controller: TextEditingController(text: note),
                 onChanged: (val) => note = val,
                 maxLines: 4,
                 decoration: const InputDecoration(
-                  hintText: "📝 Ghi chú thêm về cảm xúc hôm nay...",
+                  hintText: "📝 Add additional notes about your mood...",
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -195,10 +195,10 @@ class _HeroPageState extends State<HeroPage> {
               ElevatedButton.icon(
                 icon: const Icon(Icons.save),
                 label: Text(loading
-                    ? "Đang lưu..."
+                    ? "Saving..."
                     : todayMood != null
-                    ? "📤 Cập nhật cảm xúc"
-                    : "💾 Lưu cảm xúc"),
+                    ? "📤 Update Mood"
+                    : "💾 Save Mood"),
                 onPressed: loading ? null : handleSubmit,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -208,16 +208,13 @@ class _HeroPageState extends State<HeroPage> {
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () {
-                  // Khi bấm nút sẽ chuyển sang trang MoodHistoryPage
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const MoodHistoryPage()),
                   );
-
                 },
-                child: const Text("📅 Xem lịch sử Mood"),
+                child: const Text("📅 View Mood History"),
               ),
-
             ],
           ),
         ),

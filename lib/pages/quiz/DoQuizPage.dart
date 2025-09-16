@@ -145,28 +145,28 @@ class _DoQuizPageState extends State<DoQuizPage> {
           "Content-Type": "application/json",
           if (token != null) "Authorization": "Bearer $token",
         },
-        body: jsonEncode(submission.toJson()), // 🎯 gọn gàng
+        body: jsonEncode(submission.toJson()),
       );
       print("STATUS: ${response.statusCode}");
       print("BODY: ${response.body}");
-
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final result = QuizSubmitResponse.fromJson(data);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Bạn đạt ${result.totalScore} điểm - ${result.resultLabel}")),
+          SnackBar(
+              content: Text(
+                  "You scored ${result.totalScore} points - ${result.resultLabel}")),
         );
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Nộp bài thất bại: $e")),
+        SnackBar(content: Text("Failed to submit quiz: $e")),
       );
     }
   }
-
 
   Widget questionListDialog(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
@@ -178,7 +178,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text("Danh sách câu hỏi",
+            Text("Question List",
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -226,7 +226,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white),
               onPressed: () => Navigator.pop(context),
-              child: const Text("Đóng"),
+              child: const Text("Close"),
             ),
           ],
         ),
@@ -248,7 +248,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Câu ${currentQuestionIndex + 1}/${questions.length}",
+                "Question ${currentQuestionIndex + 1}/${questions.length}",
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -260,8 +260,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
                   children: [
                     Text("Mark for review",
                         style: TextStyle(
-                            color:
-                            isDark ? Colors.white : Colors.black87)),
+                            color: isDark ? Colors.white : Colors.black87)),
                     const SizedBox(width: 6),
                     Container(
                       width: 12,
@@ -285,7 +284,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
           Html(data: q["content"] ?? ""),
           const SizedBox(height: 12),
 
-          // render theo type
+          // render per type
           if (type == "MCQ") _buildMCQ(q, isDark),
           if (type == "TRUE_FALSE") _buildTrueFalse(q, isDark),
           if (type == "TEXT") _buildText(q, isDark),
@@ -296,6 +295,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
     );
   }
 
+  // --- render functions keep same, chỉ dịch label ---
   Widget _buildMCQ(Map<String, dynamic> q, bool isDark) {
     final options = List<String>.from(q["options"] ?? []);
     return Column(
@@ -330,8 +330,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
   }
 
   Widget _buildText(Map<String, dynamic> q, bool isDark) {
-    final controller =
-    TextEditingController(text: answers[q["id"]] ?? "");
+    final controller = TextEditingController(text: answers[q["id"]] ?? "");
     return TextField(
       controller: controller,
       decoration: const InputDecoration(border: OutlineInputBorder()),
@@ -452,7 +451,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
     if (isError || questions.isEmpty) {
       return Scaffold(
         body: Center(
-            child: Text("❌ Lỗi khi tải dữ liệu",
+            child: Text("❌ Failed to load data",
                 style: TextStyle(color: isDark ? Colors.white : Colors.black87))),
       );
     }
@@ -462,7 +461,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
       appBar: AppBar(
         title: const Text("Do Quiz"),
         actions: [
-          if (!isLandscape) // chỉ hiện nút danh sách khi ở dọc
+          if (!isLandscape)
             IconButton(
               icon: const Icon(Icons.list_alt),
               onPressed: () => showDialog(
@@ -476,7 +475,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text("🎉 Bạn đã hoàn thành quiz!",
+            const Text("🎉 You have completed the quiz!",
                 style:
                 TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
@@ -489,16 +488,15 @@ class _DoQuizPageState extends State<DoQuizPage> {
                   isFinished = false;
                 });
               },
-              child: const Text("Làm lại"),
+              child: const Text("Retake"),
             )
           ],
         ),
       )
           : isLandscape
-      // 👉 Landscape: chia đôi màn hình
           ? Row(
         children: [
-          // cột câu hỏi
+          // question area
           Expanded(
             flex: 3,
             child: PageView.builder(
@@ -510,7 +508,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
                   buildQuestionCard(questions[index], brightness),
             ),
           ),
-          // cột trạng thái
+          // status area
           Expanded(
             flex: 1,
             child: Container(
@@ -520,7 +518,7 @@ class _DoQuizPageState extends State<DoQuizPage> {
               child: Column(
                 children: [
                   const SizedBox(height: 12),
-                  Text("Trạng thái câu hỏi",
+                  Text("Question Status",
                       style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -539,9 +537,8 @@ class _DoQuizPageState extends State<DoQuizPage> {
                       itemCount: questions.length,
                       itemBuilder: (context, index) {
                         final q = questions[index];
-                        Color bgColor = isDark
-                            ? Colors.white
-                            : Colors.white;
+                        Color bgColor =
+                        isDark ? Colors.white : Colors.white;
                         if (answers.containsKey(q["id"])) {
                           bgColor = Colors.green;
                         }
@@ -576,7 +573,6 @@ class _DoQuizPageState extends State<DoQuizPage> {
           ),
         ],
       )
-      // 👉 Portrait: chỉ hiển thị câu hỏi
           : PageView.builder(
         controller: pageController,
         onPageChanged: (index) =>
@@ -592,11 +588,10 @@ class _DoQuizPageState extends State<DoQuizPage> {
           style: ElevatedButton.styleFrom(
               minimumSize: const Size.fromHeight(50),
               backgroundColor: Colors.orange),
-          child: const Text("NỘP BÀI",
+          child: const Text("SUBMIT",
               style: TextStyle(fontWeight: FontWeight.bold)),
         ),
       ),
     );
   }
-
 }
