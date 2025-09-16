@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:trackmentalhealth/helper/GoogleMeetService.dart';
+import 'package:trackmentalhealth/pages/chat/VideoCallPage/GoogleMeetWebViewPage.dart';
 
 class PublicCallPage extends StatefulWidget {
   const PublicCallPage({Key? key}) : super(key: key);
@@ -22,19 +23,23 @@ class _PublicCallPageState extends State<PublicCallPage> {
     setState(() => _isLoading = true);
     
     try {
-      await GoogleMeetService.startVideoCall(
-        meetingTitle: 'Public Group Meeting - $roomID',
-        participantName: 'Group Participant',
+      // Tạo Google Meet URL cho WebView
+      final meetingUrl = GoogleMeetService.generateWebViewUrl(
+        'Public Group Meeting - $roomID',
+        'Group Participant',
       );
       
-      // Quay lại màn hình trước sau khi mở Google Meet
+      // Mở Google Meet trong WebView
       if (mounted) {
-        // Use a delayed pop to avoid Navigator lock issues
-        Future.delayed(Duration(milliseconds: 100), () {
-          if (mounted) {
-            Navigator.of(context).pop();
-          }
-        });
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GoogleMeetWebViewPage(
+              meetingUrl: meetingUrl,
+              meetingTitle: 'Public Group Meeting - $roomID',
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -106,7 +111,7 @@ class _PublicCallPageState extends State<PublicCallPage> {
                 ),
                 SizedBox(height: 20),
                 Text(
-                  'Google Meet will open in your browser',
+                  'Google Meet will open in WebView',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:trackmentalhealth/helper/GoogleMeetService.dart';
-import 'package:trackmentalhealth/pages/chat/VideoCallPage/GoogleMeetWebViewPage.dart';
+import 'package:trackmentalhealth/helper/AgoraService.dart';
+import 'package:trackmentalhealth/pages/chat/VideoCallPage/AgoraVideoCallPage.dart';
 
 class PrivateCallPage extends StatefulWidget {
   final String? sessionId;
@@ -27,27 +27,27 @@ class _PrivateCallPageState extends State<PrivateCallPage> {
   @override
   void initState() {
     super.initState();
-    _startGoogleMeetCall();
+    _startVideoCall();
   }
 
-  Future<void> _startGoogleMeetCall() async {
+  Future<void> _startVideoCall() async {
     setState(() => _isLoading = true);
     
     try {
-      // Tạo Google Meet URL
-      final meetingUrl = GoogleMeetService.generateMeetUrl(
-        'Chat with ${widget.currentUserName}',
-        widget.currentUserName,
-      );
+      // Khởi tạo Agora
+      await AgoraService.initialize();
       
-      // Mở Google Meet trong WebView
+      // Mở trang video call Agora
       if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => GoogleMeetWebViewPage(
-              meetingUrl: meetingUrl,
-              meetingTitle: 'Chat with ${widget.currentUserName}',
+            builder: (context) => AgoraVideoCallPage(
+              channelName: widget.sessionId ?? 'test_session',
+              uid: int.parse(widget.currentUserId),
+              callerName: widget.currentUserName,
+              calleeName: widget.currentUserName,
+              isCaller: widget.isCaller,
             ),
           ),
         );
@@ -90,7 +90,7 @@ class _PrivateCallPageState extends State<PrivateCallPage> {
               ),
               SizedBox(height: 20),
               Text(
-                'Opening Google Meet...',
+                'Initializing Agora...',
                 style: TextStyle(
                   fontSize: 18,
                   color: Colors.grey[600],
@@ -113,7 +113,7 @@ class _PrivateCallPageState extends State<PrivateCallPage> {
               ),
               SizedBox(height: 10),
               Text(
-                'Google Meet will open in your browser',
+                'Starting Agora video call...',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[600],
@@ -122,7 +122,7 @@ class _PrivateCallPageState extends State<PrivateCallPage> {
               ),
               SizedBox(height: 30),
               ElevatedButton.icon(
-                onPressed: _startGoogleMeetCall,
+                onPressed: _startVideoCall,
                 icon: Icon(Icons.video_call),
                 label: Text('Start Video Call'),
                 style: ElevatedButton.styleFrom(
@@ -138,3 +138,4 @@ class _PrivateCallPageState extends State<PrivateCallPage> {
     );
   }
 }
+

@@ -1,8 +1,5 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:trackmentalhealth/utils/showToast.dart';
-
-import '../pages/chat/VideoCallPage/PrivateCallPage.dart';
+import 'package:trackmentalhealth/utils/CallSignalManager.dart';
 import 'StompService.dart';
 
 class CallSignalListener extends StatefulWidget {
@@ -36,115 +33,16 @@ class _CallSignalListenerState extends State<CallSignalListener> {
   }
 
   void _handleCallSignal(Map<String, dynamic> signal) {
-    print("📞 Nhận tín hiệu: $signal");
-
-    switch (signal["type"]) {
-      case "CALL_REQUEST":
-        if (signal["calleeId"] == widget.currentUserId) {
-          _showIncomingCallDialog(signal);
-        }
-        break;
-
-      case "CALL_ACCEPTED":
-        if (signal["callerId"] == widget.currentUserId) {
-          // caller join call
-          Future.delayed(Duration(milliseconds: 100), () {
-            if (mounted) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PrivateCallPage(
-                    sessionId: widget.sessionId,
-                    currentUserId: widget.currentUserId,
-                    currentUserName: widget.currentUserName,
-                    isCaller: true,
-                  ),
-                ),
-              );
-            }
-          });
-        }
-        break;
-
-      case "CALL_REJECTED":
-        if (signal["callerId"] == widget.currentUserId) {
-          showToast("📵 Call was rejected",'error');
-          Future.delayed(Duration(milliseconds: 100), () {
-            if (mounted) {
-              Navigator.popUntil(context, ModalRoute.withName("/chat/${widget.sessionId}"));
-            }
-          });
-        }
-        break;
-
-      case "CALL_ENDED":
-        showToast("📵 Call ended",'warning');
-        Future.delayed(Duration(milliseconds: 100), () {
-          if (mounted) {
-            Navigator.popUntil(context, ModalRoute.withName("/chat/${widget.sessionId}"));
-          }
-        });
-        break;
-    }
-  }
-
-  void _showIncomingCallDialog(Map<String, dynamic> signal) {
-    showDialog(
+    CallSignalManager.handleCallSignal(
+      signal: signal,
+      currentUserId: widget.currentUserId,
+      currentUserName: widget.currentUserName,
+      sessionId: widget.sessionId,
+      stompService: widget.stompService,
       context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: Text("${signal["callerName"]} is calling..."),
-        actions: [
-          TextButton(
-            onPressed: () {
-              widget.stompService.sendCallSignal(
-                int.parse(widget.sessionId),
-                {
-                  "type": "CALL_ACCEPTED",
-                  "callerId": signal["callerId"],
-                  "calleeId": widget.currentUserId,
-                  "sessionId": widget.sessionId,
-                },
-              );
-              Navigator.pop(context);
-              // Use a delayed push to avoid Navigator lock issues
-              Future.delayed(Duration(milliseconds: 100), () {
-                if (mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PrivateCallPage(
-                        sessionId: widget.sessionId,
-                        currentUserId: widget.currentUserId,
-                        currentUserName: widget.currentUserName,
-                        isCaller: false,
-                      ),
-                    ),
-                  );
-                }
-              });
-            },
-            child: const Text("Accept"),
-          ),
-          TextButton(
-            onPressed: () {
-              widget.stompService.sendCallSignal(
-                int.parse(widget.sessionId),
-                {
-                  "type": "CALL_REJECTED",
-                  "callerId": signal["callerId"],
-                  "calleeId": widget.currentUserId,
-                  "sessionId": widget.sessionId,
-                },
-              );
-              Navigator.pop(context);
-            },
-            child: const Text("Reject", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
     );
   }
+
 
   @override
   void dispose() {
