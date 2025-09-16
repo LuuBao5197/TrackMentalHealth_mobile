@@ -189,7 +189,7 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setString('fullname', user['fullname']);
         await prefs.setString('avatar', user['avatar'] ?? '');
         await prefs.setString('role', user['role']);
-        await prefs.setString('email', user['email']);
+        // await prefs.setString('email', user['email']);
 
         if (!mounted) return;
         Navigator.pushReplacement(
@@ -228,12 +228,21 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleLogin() async {
-    final email = _emailController.text.trim();
+    final email = _showFaceLogin ? _saveEmail! : _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = "Please enter all required fields.");
-      return;
+    if (_showFaceLogin) {
+      // Chỉ cần check password khi có saved email
+      if (password.isEmpty) {
+        setState(() => _error = "Please enter your password.");
+        return;
+      }
+    } else {
+      // Chưa có saved email thì check cả 2
+      if (email.isEmpty || password.isEmpty) {
+        setState(() => _error = "Please enter all required fields.");
+        return;
+      }
     }
 
     setState(() {
