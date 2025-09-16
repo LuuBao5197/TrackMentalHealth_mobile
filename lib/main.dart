@@ -22,6 +22,7 @@ import 'package:trackmentalhealth/pages/home/mood_history_page.dart';
 import 'package:trackmentalhealth/pages/login/LoginPage.dart';
 import 'package:trackmentalhealth/pages/profile/ProfileScreen.dart';
 import 'package:trackmentalhealth/pages/quiz/QuizScreen.dart';
+import 'package:trackmentalhealth/pages/test/PersonalityTestPage.dart';
 import 'package:trackmentalhealth/pages/test/TestScreen.dart';
 import 'package:trackmentalhealth/pages/content/ContentTabScreen.dart';
 
@@ -82,6 +83,15 @@ class TrackMentalHealthApp extends StatelessWidget {
         '/hero': (context) => const HeroPage(),
         '/mood-history': (context) => const MoodHistoryPage(),
         '/history': (context) => const DiaryHistoryPage(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name != null && settings.name!.startsWith("/user/doTest/")) {
+          final id = settings.name!.split("/").last;
+          return MaterialPageRoute(
+            builder: (context) => PersonalityTestPage(testId: int.parse(id)),
+          );
+        }
+        return null;
       },
     );
   }
