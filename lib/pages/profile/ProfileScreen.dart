@@ -62,6 +62,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _registerFaceId() async {
+    try {
+      // 1. Mở camera chụp ảnh
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.camera);
+      if (picked == null) return;
+
+      File imageFile = File(picked.path);
+
+      // 2. Gửi ảnh sang Flask để tạo embedding
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse("${ApiConstants.flaskBaseUrl}/generate-embedding"),
+      );
+      request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+
+      var response = await request.send();
+      if (response.statusCode != 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ Không tạo được embedding từ ảnh")),
+        );
+        return;
+      }
+
+      final respStr = await response.stream.bytesToString();
+      final embedding = List<double>.from(jsonDecode(respStr));
+
+      // 3. Gửi embedding + email sang Spring Boot để lưu
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString("token");
+
+      final saveResponse = await http.post(
+        Uri.parse(ApiConstants.baseUrl + "/users/register-faceid"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "embedding": embedding, // List<double>
+        }),
+      );
+
+
+      if (saveResponse.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("✅ FaceID registered successfully!")),
+        );
+      } else {
+        debugPrint("FaceID register failed: ${saveResponse.body}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ FaceID register failed")),
+        );
+      }
+    } catch (e) {
+      debugPrint("⚠️ Exception: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("⚠️ Error: $e")),
+      );
+    }
+  }
+
+
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
@@ -199,6 +259,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: const Text("Save Changes"),
               ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.face, color: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  backgroundColor: Colors.deepPurple,
+                ),
+                onPressed: _registerFaceId,
+                label: const Text("Register FaceID"),
+              ),
+
             ],
           ),
         ),

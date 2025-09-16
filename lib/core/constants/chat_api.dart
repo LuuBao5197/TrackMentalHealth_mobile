@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:trackmentalhealth/models/ChatMessageGroup.dart';
+import 'package:http_parser/http_parser.dart';
 
+import '../../models/Appointment.dart';
 import '../../models/ChatMessage.dart';
 import '../../models/Psychologist.dart';
 import 'api_constants.dart' as api_constants;
@@ -19,6 +21,8 @@ final String aiUrl = '$baseUrl/chatai';
 final String notificationUrl = '$baseUrl/notification';
 final String chatGroupUrl = '$baseUrl/chatgroup';
 final String uploadUrl = '$baseUrl/upload';
+final String reviewUrl = '$baseUrl/review';
+
 
 // ==================== Upload File ====================
 Future<String> uploadFile(File file) async {
@@ -60,13 +64,14 @@ Future<ChatMessage?> getLastestMsg(int sessionId) async {
   } else if (res.statusCode == 404) {
     return null; // Chưa có tin nhắn
   } else {
-
     throw Exception('Failed to load lastest message');
   }
 }
 
 Future<ChatMessageGroup?> getLastestMsgGroup(int groupId) async {
-  final res = await http.get(Uri.parse('$chatGroupUrl/lastest-message/$groupId'));
+  final res = await http.get(
+    Uri.parse('$chatGroupUrl/lastest-message/$groupId'),
+  );
 
   if (res.statusCode == 200) {
     final jsonData = jsonDecode(res.body);
@@ -77,9 +82,6 @@ Future<ChatMessageGroup?> getLastestMsgGroup(int groupId) async {
     throw Exception('Failed to load latest message');
   }
 }
-
-
-
 
 Future<dynamic> initiateChatSession(int senderId, int receiverId) async {
   final res = await http.post(
@@ -130,40 +132,64 @@ Future<List<dynamic>> getAppointmentByPsyId(int psyId) async {
   }
 }
 
-Future<dynamic> saveAppointment(Map<String, dynamic> data) async {
-  final res = await http.post(
-    Uri.parse('${appointmentUrl}/save'),
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode(data),
-  );
-  if (res.statusCode == 200) {
-    return jsonDecode(res.body);
-  } else {
-    throw Exception('Failed to save appointment');
+Future<Appointment> saveAppointment(Map<String, dynamic> data) async {
+  try {
+    final res = await http.post(
+      Uri.parse('$appointmentUrl/save'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+
+    print("Response status: ${res.statusCode}");
+    print("Response body: ${res.body}");
+
+    if (res.statusCode == 200) {
+      final Map<String, dynamic> json = jsonDecode(res.body);
+      return Appointment.fromJson(json);
+    } else if (res.statusCode == 409) {
+      // Conflict: đã có lịch hẹn đang chờ với chuyên gia này
+      throw Exception("CONFLICT");
+    } else {
+      throw Exception('Failed to save appointment: ${res.statusCode}');
+    }
+  } catch (e) {
+    throw Exception('Error saving appointment: $e');
   }
 }
 
 Future<dynamic> updateAppointment(int id, Map<String, dynamic> data) async {
   final res = await http.put(
-    Uri.parse('${appointmentUrl}/$id'),
+    Uri.parse('$appointmentUrl/$id'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode(data),
   );
+
   if (res.statusCode == 200) {
-    return jsonDecode(res.body);
+    if (res.body.isNotEmpty) {
+      return jsonDecode(res.body);
+    } else {
+      return {"message": "Update successful"}; // hoặc trả về data đã gửi
+    }
+  } else if (res.statusCode == 409) {
+    throw Exception("CONFLICT: Appointment already exists");
   } else {
-    throw Exception('Failed to update appointment');
+    throw Exception('Failed to update appointment: ${res.statusCode}');
   }
 }
 
+
 Future<dynamic> deleteAppointment(int id) async {
-  final res = await http.delete(Uri.parse('${appointmentUrl}/$id'));
+  final res = await http.delete(Uri.parse('$appointmentUrl/$id'));
   if (res.statusCode == 200) {
-    return jsonDecode(res.body);
+    if (res.body.isNotEmpty) {
+      return jsonDecode(res.body);
+    }
+    return null;
   } else {
-    throw Exception('Failed to delete appointment');
+    throw Exception('Failed to delete appointment: ${res.statusCode}');
   }
 }
+
 
 // ==================== Psychologists ====================
 Future<List<Psychologist>> getPsychologists() async {
@@ -175,7 +201,6 @@ Future<List<Psychologist>> getPsychologists() async {
     throw Exception('Failed to fetch psychologists');
   }
 }
-
 
 // ==================== AI ====================
 Future<String> chatAI(Map<String, dynamic> data) async {
@@ -231,20 +256,17 @@ Future<dynamic> saveNotification(Map<String, dynamic> data) async {
   }
 }
 
-Future<dynamic> changeStatusNotification(int id) async {
+Future<void> changeStatusNotification(int id) async {
   final res = await http.put(Uri.parse('${notificationUrl}/changestatus/$id'));
-  if (res.statusCode == 200) {
-    return jsonDecode(res.body);
-  } else {
-    throw Exception('Failed to change notification status');
+
+  if (res.statusCode != 200) {
+    throw Exception('Failed to change notification status: ${res.statusCode}');
   }
 }
 
 Future<dynamic> deleteNotificationById(int id) async {
   final res = await http.delete(Uri.parse('${notificationUrl}/delete/$id'));
-  if (res.statusCode == 200) {
-    return jsonDecode(res.body);
-  } else {
+  if (res.statusCode != 200) {
     throw Exception('Failed to delete notification');
   }
 }
@@ -269,7 +291,8 @@ Future<List<dynamic>> getChatGroupByCreatorId(int id) async {
 }
 
 Future<dynamic> getChatGroupById(int id) async {
-  final res = await http.get(Uri.parse('$chatGroupUrl$id'));
+  final res = await http.get(Uri.parse('$chatGroupUrl/$id'));
+
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
@@ -298,46 +321,66 @@ Future<List<dynamic>> findUsersByGroupId(int groupId, int currentUserId) async {
 }
 
 Future<dynamic> deleteGroupById(int id) async {
-  final res = await http.delete(Uri.parse('${chatGroupUrl}/delete/$id'));
-  if (res.statusCode == 200) {
-    return jsonDecode(res.body);
+  final res = await http.delete(Uri.parse('$chatGroupUrl/delete/$id'));
+
+  if (res.statusCode == 200 || res.statusCode == 204) {
+    if (res.body.isNotEmpty) {
+      return jsonDecode(res.body);
+    } else {
+      return true; // chỉ báo thành công
+    }
   } else {
-    throw Exception('Failed to delete group');
+    throw Exception('Failed to delete group: ${res.statusCode}');
   }
 }
+
 
 Future<dynamic> createNewGroup(
   Map<String, dynamic> groupData,
   File? file,
-) async {
+) async
+{
   var request = http.MultipartRequest(
     'POST',
     Uri.parse('${chatGroupUrl}/create'),
   );
-  request.fields['chatGroup'] = jsonEncode(groupData);
+
+  // Gửi chatGroup dạng JSON với content-type application/json
+  request.files.add(
+    http.MultipartFile.fromString(
+      'chatGroup',
+      jsonEncode(groupData),
+      contentType: MediaType('application', 'json'),
+    ),
+  );
+
   if (file != null) {
     request.files.add(await http.MultipartFile.fromPath('file', file.path));
   }
+
   var response = await request.send();
+  final res = await http.Response.fromStream(response);
+
+  debugPrint("➡️ Status: ${response.statusCode}");
+  debugPrint("➡️ Body: ${res.body}");
 
   if (response.statusCode == 200) {
-    final res = await http.Response.fromStream(response);
     return jsonDecode(res.body);
   } else {
-    throw Exception('Failed to create group');
+    throw Exception('Failed to create group: ${res.body}');
   }
 }
 
 Future<dynamic> updateGroupById(int id, Map<String, dynamic> data) async {
   final res = await http.put(
-    Uri.parse('${chatGroupUrl}/edit/$id'),
+    Uri.parse('$chatGroupUrl/edit/$id'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode(data),
   );
   if (res.statusCode == 200) {
     return jsonDecode(res.body);
   } else {
-    throw Exception('Failed to update group');
+    throw Exception('Failed to update group: ${res.body}');
   }
 }
 
@@ -351,3 +394,40 @@ Future<dynamic> changeStatusIsRead(int sessionId, int receiverId) async {
     throw Exception('Failed to change message status');
   }
 }
+
+//
+Future<double> getAverageRatingByPsychologist(int psyId) async {
+  final res = await http.get(
+    Uri.parse('${reviewUrl}/average/$psyId'),
+  );
+  if (res.statusCode == 200) {
+    // API trả về trực tiếp double
+    return double.tryParse(res.body) ?? 0.0;
+  } else {
+    throw Exception('Failed to get average rating');
+  }
+}
+
+//
+Future<Map<String, dynamic>> createReviewByAppointmentId(int id, Map<String, dynamic> data) async {
+  final url = Uri.parse('$reviewUrl/appointment/$id');
+  try {
+    final res = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(data),
+    );
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception('Failed to create review. StatusCode: ${res.statusCode}');
+    }
+  } catch (e) {
+    print('Lỗi createReviewByAppointmentId: $e');
+    rethrow;
+  }
+}
+

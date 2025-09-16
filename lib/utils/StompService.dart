@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:stomp_dart_client/stomp_dart_client.dart';
+import '../core/constants/api_constants.dart' as api_constants;
 
 class StompService {
   late StompClient _stompClient;
   bool _connected = false;
 
-  // Thay đổi IP theo backend của bạn
-  static const String ipLocal = '192.168.1.5';
-  final String _socketUrl = 'ws://$ipLocal:9999/ws';
+  final ip = api_constants.ApiConstants.ipLocal;
+  late final String _socketUrl = 'ws://$ip:9999/ws';
 
   /// Khởi tạo kết nối STOMP
   void connect({
@@ -19,7 +19,7 @@ class StompService {
         url: _socketUrl,
         onConnect: (frame) {
           _connected = true;
-          print("✅ STOMP connected");
+          print("✅ STOMP connected to $_socketUrl");
           onConnect(frame);
         },
         beforeConnect: () async {
@@ -44,13 +44,52 @@ class StompService {
   }
 
   /// Subscribe tới một topic (chat hoặc call)
-  void subscribe(String destination, void Function(StompFrame frame) callback) {
+  void subscribe(String destination, void Function(dynamic parsed) callback) {
     if (!_connected) {
       print('⚠️ Cannot subscribe, STOMP not connected');
       return;
     }
     print('🔔 Subscribing to $destination');
-    _stompClient.subscribe(destination: destination, callback: callback);
+
+    _stompClient.subscribe(
+      destination: destination,
+      callback: (frame) {
+        try {
+          dynamic raw;
+
+          // Trường hợp frame có body (StompFrame)
+          if (frame is StompFrame) {
+            if (frame.body == null || frame.body!.isEmpty) {
+              print("⚠️ Empty frame body from $destination");
+              return;
+            }
+            print("📩 Raw frame body from $destination: ${frame.body}");
+            raw = jsonDecode(frame.body!);
+          }
+          // Trường hợp lib trả thẳng Map hoặc String
+          else if (frame is String) {
+            print("📩 Raw string from $destination: $frame");
+            raw = jsonDecode(frame as String);
+          } else if (frame is Map<String, dynamic>) {
+            print("📩 Raw map from $destination: $frame");
+            raw = frame;
+          } else {
+            print("⚠️ Unexpected frame type: ${frame.runtimeType}");
+            return;
+          }
+
+          // Trả về cho callback
+          if (raw is Map<String, dynamic>) {
+            callback(raw);
+          } else {
+            print("❌ Unexpected parsed type: ${raw.runtimeType}");
+          }
+        } catch (e, s) {
+          print("❌ Error parsing JSON from $destination: $e");
+          print(s);
+        }
+      },
+    );
   }
 
   /// Gửi tin nhắn chat
