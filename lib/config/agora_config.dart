@@ -20,3 +20,4 @@ class AgoraConfig {
   static const int channels = 1; // mono
   static const int bitrateAudio = 48; // kbps
 }
+
