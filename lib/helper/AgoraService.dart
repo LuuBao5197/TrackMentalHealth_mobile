@@ -8,11 +8,12 @@ class AgoraService {
   
   // Sử dụng App ID từ config
   static String get _appId => AgoraConfig.appId;
-  
+
   /// Khởi tạo Agora RTC Engine
   static Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
+
     try {
       // Yêu cầu quyền camera và microphone
       await _requestPermissions();
@@ -23,6 +24,10 @@ class AgoraService {
         appId: _appId,
         channelProfile: ChannelProfileType.channelProfileCommunication,
       ));
+      
+      // Thêm cấu hình để sử dụng test mode
+      await _engine!.setLogLevel(LogLevel.logLevelInfo);
+      // Không set log file vì gây lỗi
       
       // Bật video
       await _engine!.enableVideo();
@@ -78,13 +83,33 @@ class AgoraService {
     }
     
     try {
+      // Thêm event listener để xử lý lỗi
+      _engine!.registerEventHandler(
+        RtcEngineEventHandler(
+          onError: (ErrorCodeType err, String msg) {
+            print('❌ Agora error: $err - $msg');
+          },
+          onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
+            print('✅ Successfully joined channel: ${connection.channelId}');
+          },
+          onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
+            print('✅ Remote user joined: $remoteUid');
+          },
+          onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
+            print('ℹ️ Remote user left: $remoteUid, reason: $reason');
+          },
+        ),
+      );
+      
       await _engine!.joinChannel(
-        token: token ?? '',
+        token: '', // Sử dụng empty string cho App ID mode
         channelId: channelName,
         uid: uid,
         options: const ChannelMediaOptions(
           clientRoleType: ClientRoleType.clientRoleBroadcaster,
           channelProfile: ChannelProfileType.channelProfileCommunication,
+          publishMicrophoneTrack: true,
+          publishCameraTrack: true,
         ),
       );
       print('✅ Joined channel: $channelName with uid: $uid');
@@ -95,9 +120,9 @@ class AgoraService {
   }
   
   /// Rời khỏi channel
+  ///
   static Future<void> leaveChannel() async {
     if (_engine == null) return;
-    
     try {
       await _engine!.leaveChannel();
       print('✅ Left channel successfully');

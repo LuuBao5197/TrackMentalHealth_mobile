@@ -46,6 +46,12 @@ android {
             isShrinkResources = false
         }
     }
+
+    packagingOptions {
+        pickFirst("**/libaosl.so")
+        pickFirst("**/libc++_shared.so")
+        pickFirst("**/libjsc.so")
+    }
 }
 
 flutter {

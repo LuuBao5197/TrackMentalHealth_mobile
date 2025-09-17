@@ -49,6 +49,40 @@ class CallInitiator {
       showToast("❌ Không thể khởi tạo cuộc gọi", 'error');
     }
   }
+
+  /// Gửi call request mà không hiển thị dialog chờ (cho người gọi)
+  static Future<void> sendCallRequest({
+    required String sessionId,
+    required String callerId,
+    required String callerName,
+    required String calleeId,
+    required String calleeName,
+    required StompService stompService,
+  }) async {
+    print("📞 [CallInitiator] Gửi call request từ $callerName đến $calleeName");
+    
+    try {
+      // Gửi signal yêu cầu gọi
+      CallSignalManager.sendSignalWithRetry(
+        stompService: stompService,
+        sessionId: int.parse(sessionId),
+        signal: {
+          "type": "CALL_REQUEST",
+          "callerId": callerId,
+          "calleeId": calleeId,
+          "callerName": callerName,
+          "calleeName": calleeName,
+          "sessionId": sessionId,
+          "timestamp": DateTime.now().millisecondsSinceEpoch,
+        },
+      );
+      
+      print("✅ [CallInitiator] Call request đã được gửi");
+    } catch (e) {
+      print("❌ [CallInitiator] Lỗi khi gửi call request: $e");
+      throw e;
+    }
+  }
   
   /// Hiển thị dialog đang gọi
   static void _showCallingDialog({
@@ -195,4 +229,5 @@ class CallInitiator {
     return Navigator.canPop(context);
   }
 }
+
 

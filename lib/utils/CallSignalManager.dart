@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:trackmentalhealth/utils/showToast.dart';
+import 'package:trackmentalhealth/utils/CallNotificationService.dart';
 import 'package:trackmentalhealth/pages/chat/VideoCallPage/AgoraVideoCallPage.dart';
 import 'StompService.dart';
 
@@ -122,6 +125,7 @@ class CallSignalManager {
         callerName: currentUserName,
         calleeName: signal["calleeName"] ?? "Unknown",
         isCaller: true,
+        stompService: null, // Có thể cần truyền từ context
       );
     }
   }
@@ -137,7 +141,7 @@ class CallSignalManager {
     
     if (callerId == currentUserId) {
       print("❌ [SignalManager] Cuộc gọi bị từ chối");
-      showToast("📵 Cuộc gọi bị từ chối", 'error');
+      CallNotificationService.showCallRejectedNotification();
       _navigateBackToChat(context, sessionId);
     }
   }
@@ -150,7 +154,7 @@ class CallSignalManager {
     BuildContext context,
   ) {
     print("📵 [SignalManager] Cuộc gọi kết thúc");
-    showToast("📵 Cuộc gọi đã kết thúc", 'warning');
+    CallNotificationService.showCallEndedNotification();
     _navigateBackToChat(context, sessionId);
   }
   
@@ -164,7 +168,7 @@ class CallSignalManager {
     
     if (callerId == currentUserId) {
       print("📵 [SignalManager] Người nhận đang bận");
-      showToast("📵 Người nhận đang bận", 'warning');
+      CallNotificationService.showCallBusyNotification();
     }
   }
   
@@ -178,6 +182,7 @@ class CallSignalManager {
     
     if (callerId == currentUserId) {
       print("⏰ [SignalManager] Cuộc gọi timeout");
+      CallNotificationService.stopCallNotification();
       showToast("⏰ Cuộc gọi không được trả lời", 'warning');
     }
   }
@@ -191,51 +196,29 @@ class CallSignalManager {
     StompService stompService,
     BuildContext context,
   ) {
+    // Phát âm thanh cuộc gọi đến
+    _playIncomingCallSound();
+    
+    // Rung thiết bị
+    HapticFeedback.heavyImpact();
+    
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.video_call, color: Colors.blue),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text("${signal["callerName"]} đang gọi..."),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("Bạn có muốn nhận cuộc gọi video không?"),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => _acceptCall(signal, currentUserId, currentUserName, sessionId, stompService, context),
-                  icon: Icon(Icons.video_call, color: Colors.white),
-                  label: Text("Nhận"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => _rejectCall(signal, currentUserId, sessionId, stompService, context),
-                  icon: Icon(Icons.call_end, color: Colors.white),
-                  label: Text("Từ chối"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+      builder: (_) => IncomingCallDialog(
+        signal: signal,
+        currentUserId: currentUserId,
+        currentUserName: currentUserName,
+        sessionId: sessionId,
+        stompService: stompService,
       ),
     );
+  }
+  
+  /// Phát âm thanh cuộc gọi đến
+  static void _playIncomingCallSound() {
+    // Sử dụng SystemSound để phát âm thanh cuộc gọi
+    SystemSound.play(SystemSoundType.alert);
   }
   
   /// Chấp nhận cuộc gọi
@@ -271,6 +254,7 @@ class CallSignalManager {
           callerName: signal["callerName"] ?? "Unknown",
           calleeName: currentUserName,
           isCaller: false,
+          stompService: stompService,
         );
       }
     });
@@ -306,6 +290,7 @@ class CallSignalManager {
     required String callerName,
     required String calleeName,
     required bool isCaller,
+    StompService? stompService,
   }) {
     Navigator.push(
       context,
@@ -316,6 +301,7 @@ class CallSignalManager {
           callerName: callerName,
           calleeName: calleeName,
           isCaller: isCaller,
+          stompService: stompService,
         ),
       ),
     );
@@ -357,4 +343,265 @@ class CallSignalManager {
     }
   }
 }
+
+/// Widget dialog cuộc gọi đến với animation
+class IncomingCallDialog extends StatefulWidget {
+  final Map<String, dynamic> signal;
+  final String currentUserId;
+  final String currentUserName;
+  final String sessionId;
+  final StompService stompService;
+
+  const IncomingCallDialog({
+    Key? key,
+    required this.signal,
+    required this.currentUserId,
+    required this.currentUserName,
+    required this.sessionId,
+    required this.stompService,
+  }) : super(key: key);
+
+  @override
+  State<IncomingCallDialog> createState() => _IncomingCallDialogState();
+}
+
+class _IncomingCallDialogState extends State<IncomingCallDialog>
+    with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late AnimationController _slideController;
+  late Animation<double> _pulseAnimation;
+  late Animation<Offset> _slideAnimation;
+  Timer? _soundTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Animation cho icon cuộc gọi
+    _pulseController = AnimationController(
+      duration: Duration(seconds: 1),
+      vsync: this,
+    );
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    
+    // Animation cho slide in
+    _slideController = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(0, 1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+    
+    // Bắt đầu animations
+    _pulseController.repeat(reverse: true);
+    _slideController.forward();
+    
+    // Phát âm thanh lặp lại
+    _startSoundLoop();
+  }
+
+  void _startSoundLoop() {
+    _soundTimer = Timer.periodic(Duration(seconds: 2), (timer) {
+      SystemSound.play(SystemSoundType.alert);
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _slideController.dispose();
+    _soundTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SlideTransition(
+      position: _slideAnimation,
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.blue.shade50, Colors.blue.shade100],
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Avatar với animation
+              AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _pulseAnimation.value,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.blue,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.3),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.video_call,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              
+              SizedBox(height: 20),
+              
+              // Tên người gọi
+              Text(
+                "${widget.signal["callerName"]}",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade800,
+                ),
+              ),
+              
+              SizedBox(height: 8),
+              
+              Text(
+                "đang gọi video...",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.blue.shade600,
+                ),
+              ),
+              
+              SizedBox(height: 30),
+              
+              // Nút bấm
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Nút từ chối
+                  _buildCallButton(
+                    icon: Icons.call_end,
+                    color: Colors.red,
+                    onPressed: () => _rejectCall(),
+                  ),
+                  
+                  // Nút nhận
+                  _buildCallButton(
+                    icon: Icons.video_call,
+                    color: Colors.green,
+                    onPressed: () => _acceptCall(),
+                    isAccept: true,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCallButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+    bool isAccept = false,
+  }) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          color: Colors.white,
+          size: 30,
+        ),
+      ),
+    );
+  }
+
+  void _acceptCall() {
+    _soundTimer?.cancel();
+    CallNotificationService.stopCallNotification();
+    Navigator.pop(context);
+    
+    // Gửi signal chấp nhận
+    widget.stompService.sendCallSignal(
+      int.parse(widget.sessionId),
+      {
+        "type": "CALL_ACCEPTED",
+        "callerId": widget.signal["callerId"],
+        "calleeId": widget.currentUserId,
+        "sessionId": widget.sessionId,
+        "calleeName": widget.currentUserName,
+      },
+    );
+    
+    // Chuyển đến trang video call
+    Future.delayed(Duration(milliseconds: 100), () {
+      if (context.mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AgoraVideoCallPage(
+              channelName: widget.sessionId,
+              uid: int.parse(widget.currentUserId),
+              callerName: widget.signal["callerName"] ?? "Unknown",
+              calleeName: widget.currentUserName,
+              isCaller: false,
+              stompService: widget.stompService,
+            ),
+          ),
+        );
+      }
+    });
+  }
+
+  void _rejectCall() {
+    _soundTimer?.cancel();
+    CallNotificationService.stopCallNotification();
+    Navigator.pop(context);
+    
+    // Gửi signal từ chối
+    widget.stompService.sendCallSignal(
+      int.parse(widget.sessionId),
+      {
+        "type": "CALL_REJECTED",
+        "callerId": widget.signal["callerId"],
+        "calleeId": widget.currentUserId,
+        "sessionId": widget.sessionId,
+      },
+    );
+  }
+}
+
 

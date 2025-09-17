@@ -1,11 +1,10 @@
 class AgoraConfig {
-  // Thay thế bằng App ID của bạn từ Agora Console
-  // Đăng ký tại: https://console.agora.io/
-  static const String appId = 'a1673d21476a449e9741145e165799ba';
+
+  // Sử dụng App ID test của Agora (không cần token)
+  static const String appId = '93206addcb2a486b9460a5c95ba8b7c4';
   
-  // Token server URL (nếu sử dụng token authentication)
-  static const String tokenServerUrl = '8358e972d4b348ff89c5fda61273196c';
-  
+  // Không cần token
+
   // Default channel name prefix
   static const String channelPrefix = 'trackmentalhealth_';
   
@@ -20,4 +19,5 @@ class AgoraConfig {
   static const int channels = 1; // mono
   static const int bitrateAudio = 48; // kbps
 }
+
 

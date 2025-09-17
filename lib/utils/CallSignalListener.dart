@@ -25,11 +25,20 @@ class _CallSignalListenerState extends State<CallSignalListener> {
   void initState() {
     super.initState();
 
-    widget.stompService.connect(onConnect: (frame) {
-      widget.stompService.subscribe("/topic/call", (signal) {
-        _handleCallSignal(signal);
-      });
-    });
+    widget.stompService.connect(
+      onConnect: (frame) {
+        print("📞 [CallSignalListener] Đã kết nối, subscribe call signals");
+        // Lắng nghe call signals cho session cụ thể
+        widget.stompService.subscribe("/topic/call/${widget.sessionId}", (signal) {
+          print("📞 [CallSignalListener] Nhận call signal: $signal");
+          _handleCallSignal(signal);
+        });
+      },
+      onError: (error) {
+        print("❌ [CallSignalListener] Lỗi kết nối: $error");
+        // Có thể hiển thị thông báo lỗi cho user
+      },
+    );
   }
 
   void _handleCallSignal(Map<String, dynamic> signal) {

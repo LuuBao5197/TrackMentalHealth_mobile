@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:trackmentalhealth/helper/AgoraService.dart';
 import 'package:trackmentalhealth/utils/CallInitiator.dart';
+import 'package:trackmentalhealth/utils/StompService.dart';
 
 class AgoraVideoCallPage extends StatefulWidget {
   final String channelName;
@@ -9,6 +11,7 @@ class AgoraVideoCallPage extends StatefulWidget {
   final String callerName;
   final String calleeName;
   final bool isCaller;
+  final StompService? stompService; // Thêm StompService
 
   const AgoraVideoCallPage({
     Key? key,
@@ -17,6 +20,7 @@ class AgoraVideoCallPage extends StatefulWidget {
     required this.callerName,
     required this.calleeName,
     required this.isCaller,
+    this.stompService, // Optional
   }) : super(key: key);
 
   @override
@@ -75,11 +79,14 @@ class _AgoraVideoCallPageState extends State<AgoraVideoCallPage> {
           setState(() {
             _remoteUid = null;
           });
+          
+          // Hiển thị thông báo khi người gọi rời cuộc gọi
+          _showUserLeftMessage(remoteUid, reason);
         },
         onError: (ErrorCodeType err, String msg) {
           print('❌ Agora error: $err - $msg');
           setState(() {
-            _error = 'Agora error: $msg';
+            _error = 'Agora error: $err - $msg';
           });
         },
       ),
@@ -118,12 +125,123 @@ class _AgoraVideoCallPageState extends State<AgoraVideoCallPage> {
   }
 
   void _endCall() {
-    AgoraService.leaveChannel();
+    print("📵 [AgoraVideoCallPage] Kết thúc cuộc gọi");
     
-    // Gửi signal kết thúc cuộc gọi nếu cần
-    // CallInitiator.endCall(...) có thể được gọi từ đây nếu cần
+    // Rung thiết bị khi kết thúc cuộc gọi
+    HapticFeedback.lightImpact();
     
+    // Dừng tất cả video và audio tracks
+    _cleanupCall();
+    
+    // Gửi signal kết thúc cuộc gọi nếu có StompService
+    if (widget.stompService != null) {
+      _sendCallEndedSignal();
+    }
+    
+    // Hiển thị thông báo kết thúc cuộc gọi
+    _showCallEndedMessage();
+    
+    // Quay lại trang trước
     Navigator.pop(context);
+  }
+  
+  /// Dọn dẹp cuộc gọi
+  void _cleanupCall() {
+    try {
+      // Rời khỏi channel
+      AgoraService.leaveChannel();
+      
+      // Reset trạng thái
+      setState(() {
+        _isJoined = false;
+        _remoteUid = null;
+        _isMuted = false;
+        _isVideoEnabled = true;
+        _isSpeakerEnabled = true;
+      });
+      
+      print("✅ [AgoraVideoCallPage] Đã dọn dẹp cuộc gọi");
+    } catch (e) {
+      print("❌ [AgoraVideoCallPage] Lỗi khi dọn dẹp cuộc gọi: $e");
+    }
+  }
+  
+  /// Gửi signal kết thúc cuộc gọi
+  void _sendCallEndedSignal() {
+    try {
+      widget.stompService!.sendCallSignal(
+        int.parse(widget.channelName),
+        {
+          "type": "CALL_ENDED",
+          "callerId": widget.uid.toString(),
+          "calleeId": widget.uid.toString(),
+          "sessionId": widget.channelName,
+          "reason": "ENDED_BY_USER",
+          "timestamp": DateTime.now().millisecondsSinceEpoch,
+        },
+      );
+      print("✅ [AgoraVideoCallPage] Đã gửi signal kết thúc cuộc gọi");
+    } catch (e) {
+      print("❌ [AgoraVideoCallPage] Lỗi khi gửi signal kết thúc: $e");
+    }
+  }
+  
+  /// Hiển thị thông báo kết thúc cuộc gọi
+  void _showCallEndedMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.call_end, color: Colors.white),
+            SizedBox(width: 8),
+            Text("Cuộc gọi đã kết thúc"),
+          ],
+        ),
+        backgroundColor: Colors.grey.shade800,
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+  
+  /// Hiển thị thông báo khi người dùng rời cuộc gọi
+  void _showUserLeftMessage(int remoteUid, UserOfflineReasonType reason) {
+    String message = "Người dùng đã rời cuộc gọi";
+    
+    switch (reason) {
+      case UserOfflineReasonType.userOfflineQuit:
+        message = "Người dùng đã rời cuộc gọi";
+        break;
+      case UserOfflineReasonType.userOfflineDropped:
+        message = "Kết nối bị ngắt";
+        break;
+      case UserOfflineReasonType.userOfflineBecomeAudience:
+        message = "Người dùng chuyển sang chế độ khán giả";
+        break;
+      default:
+        message = "Người dùng đã rời cuộc gọi";
+    }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.person_off, color: Colors.white),
+            SizedBox(width: 8),
+            Text(message),
+          ],
+        ),
+        backgroundColor: Colors.orange.shade700,
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
   }
 
   @override

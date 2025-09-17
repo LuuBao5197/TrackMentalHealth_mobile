@@ -38,7 +38,7 @@ dependencies:
   permission_handler: ^12.0.1
   # Agora Flutter SDK
   agora_rtc_engine: ^6.3.0
-  agora_rtm: ^1.5.0
+  agora_rtm: ^2.2.5
   # zego_express_engine: ^3.8.0
   # zego_uikit: ^2.8.0
   # zego_uikit_prebuilt_call: ^2.8.0
