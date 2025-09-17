@@ -137,7 +137,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       return const Scaffold(
         body: Center(
           child: Text(
-            'Đang tải chi tiết bài học...',
+            'Load data detail lesson...',
             style: TextStyle(fontSize: 24),
           ),
         ),

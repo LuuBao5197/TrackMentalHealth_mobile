@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -12,7 +13,7 @@ class HomeScreen extends StatelessWidget {
             MaterialPageRoute(builder: (context) => const BlogDetailScreen()),
           );
         },
-        child: const Text('Đi tới bài viết chi tiết'),
+        child: const Text('Go to Blog Details'),
       ),
     );
   }
@@ -29,7 +30,7 @@ class BlogDetailScreen extends StatelessWidget {
         elevation: 3,
         shadowColor: Colors.teal.withOpacity(0.3),
         title: Text(
-          'Chi tiết bài viết',
+          'Blog Details',
           style: TextStyle(
             color: Colors.teal[800],
             fontWeight: FontWeight.w600,
@@ -40,7 +41,7 @@ class BlogDetailScreen extends StatelessWidget {
       body: const Padding(
         padding: EdgeInsets.all(16.0),
         child: Text(
-          'Đây là nội dung chi tiết bài viết.\nBạn có thể đọc thêm thông tin ở đây...',
+          'This is the detailed content of the blog.\nYou can read more information here...',
           style: TextStyle(fontSize: 16),
         ),
       ),

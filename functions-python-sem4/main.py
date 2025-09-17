@@ -12,10 +12,10 @@ CORS(app)
 # SQL Server connection (chỉnh theo config của bạn)
 conn_str = (
     "DRIVER={ODBC Driver 17 for SQL Server};"
-    "SERVER=REQUIN\\MSSQLSERVER01;"
+    "SERVER=LAPTOP-7EPRO5R2;"
     "DATABASE=TMH1;"
     "UID=sa;"
-    "PWD=123;"
+    "PWD=28032000;"
 )
 conn = pyodbc.connect(conn_str)
 
