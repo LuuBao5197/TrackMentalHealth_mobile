@@ -57,11 +57,11 @@ class _MoodHistoryPageState extends State<MoodHistoryPage> {
         chartData = filtered;
       });
 
-      // ======= ANALYZE DATA =======
+      // ======= DATA ANALYSIS (similar to React version) =======
       final moodLabels = {
         1: 'Very bad',
         2: 'Bad',
-        3: 'Neutral',
+        3: 'Normal',
         4: 'Happy',
         5: 'Very happy',
       };
@@ -74,6 +74,7 @@ class _MoodHistoryPageState extends State<MoodHistoryPage> {
         }
       }
 
+      // Split into 2 halves to calculate trend
       final sortedByDate = filtered.map((e) {
         return {
           "date": DateTime.parse(e.key),
@@ -96,11 +97,11 @@ class _MoodHistoryPageState extends State<MoodHistoryPage> {
       String trendDescription;
       final diff = avgSecondHalf - avgFirstHalf;
       if (diff > 0.3) {
-        trendDescription = "Mood tends to increase (start low, end high).";
+        trendDescription = "Mood tends to improve (lower at the start, higher at the end).";
       } else if (diff < -0.3) {
-        trendDescription = "Mood tends to decrease (start high, end low).";
+        trendDescription = "Mood tends to decline (higher at the start, lower at the end).";
       } else {
-        trendDescription = "Mood is stable, without significant fluctuations.";
+        trendDescription = "Mood is stable, no significant fluctuations.";
       }
 
       final entries = filtered.map((e) {
@@ -110,34 +111,34 @@ class _MoodHistoryPageState extends State<MoodHistoryPage> {
       }).join("\n");
 
       final aiPrompt = """
-Here is the user's mood statistics for the past $filterRange days.
+Here is the user’s mood statistics for the past $filterRange days.
 Mood levels: 
 1: Very bad
 2: Bad
-3: Neutral
+3: Normal
 4: Happy
 5: Very happy
 
 --- Statistics ---
-Level 1 (Very bad) days: ${levelCounts[1]}
-Level 2 (Bad) days: ${levelCounts[2]}
-Level 3 (Neutral) days: ${levelCounts[3]}
-Level 4 (Happy) days: ${levelCounts[4]}
-Level 5 (Very happy) days: ${levelCounts[5]}
+Days at level 1 (Very bad): ${levelCounts[1]}
+Days at level 2 (Bad): ${levelCounts[2]}
+Days at level 3 (Normal): ${levelCounts[3]}
+Days at level 4 (Happy): ${levelCounts[4]}
+Days at level 5 (Very happy): ${levelCounts[5]}
 
 --- Trend ---
-Average mood first half: ${avgFirstHalf.toStringAsFixed(2)}
-Average mood second half: ${avgSecondHalf.toStringAsFixed(2)}
+Average mood level (first half): ${avgFirstHalf.toStringAsFixed(2)}
+Average mood level (second half): ${avgSecondHalf.toStringAsFixed(2)}
 Overall trend: $trendDescription
 
 --- Daily details ---
 $entries
 
-==> Based on the above, please provide a brief mental health analysis for this period.
-- If moods are mostly positive (4–5) and increasing, indicate improvement.
-- If moods are decreasing or many low levels, provide appropriate comment.
-- If stable, conclude as stable.
-Answer briefly in 1–2 sentences, no need to repeat details.
+==> Based on this information, briefly analyze the mental health during this period.
+- If moods are mostly positive (4–5) and trending upward, conclude mental state is improving.
+- If moods are declining or mostly low, give an appropriate remark.
+- If stable, conclude stability.
+Only answer briefly in 1–2 sentences, no need to repeat details.
 """;
 
       // ======= CALL AI API =======
@@ -155,12 +156,12 @@ Answer briefly in 1–2 sentences, no need to repeat details.
         });
       } else {
         setState(() {
-          aiAnalysis = 'Unable to connect to AI at this time.';
+          aiAnalysis = 'Could not connect to AI at the moment.';
         });
       }
     } catch (e) {
       setState(() {
-        aiAnalysis = 'Unable to fetch mood statistics.';
+        aiAnalysis = 'Could not fetch mood statistics.';
         chartData = [];
       });
     } finally {
@@ -199,7 +200,7 @@ Answer briefly in 1–2 sentences, no need to repeat details.
       return const Center(child: CircularProgressIndicator());
     }
     if (chartData.isEmpty) {
-      return const Center(child: Text('No chart data'));
+      return const Center(child: Text('No chart data available'));
     }
 
     final spots = chartData.asMap().entries.map((entry) {
@@ -216,7 +217,7 @@ Answer briefly in 1–2 sentences, no need to repeat details.
           maxY: 5,
           gridData: FlGridData(
             show: true,
-            checkToShowHorizontalLine: (value) => value % 1 == 0,
+            checkToShowHorizontalLine: (value) => value % 1 == 0, // only whole-number grid lines
           ),
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
@@ -246,7 +247,7 @@ Answer briefly in 1–2 sentences, no need to repeat details.
                 getTitlesWidget: (value, meta) {
                   if (value % 1 != 0) return const SizedBox.shrink();
 
-                  const moodLabels = ['Very bad', 'Bad', 'Neutral', 'Happy', 'Very happy'];
+                  const moodLabels = ['Very bad', 'Bad', 'Normal', 'Happy', 'Very happy'];
                   final idx = value.toInt() - 1;
                   if (idx >= 0 && idx < moodLabels.length) {
                     return Text(moodLabels[idx], style: const TextStyle(fontSize: 10));
@@ -258,7 +259,7 @@ Answer briefly in 1–2 sentences, no need to repeat details.
             rightTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                interval: 1,
+                interval: 1, // ✅ only show whole numbers
                 getTitlesWidget: (value, meta) {
                   if (value % 1 != 0) return const SizedBox.shrink();
                   return Text(value.toInt().toString());
@@ -266,6 +267,7 @@ Answer briefly in 1–2 sentences, no need to repeat details.
               ),
             ),
           ),
+
           lineBarsData: [
             LineChartBarData(
               spots: spots,
@@ -285,7 +287,7 @@ Answer briefly in 1–2 sentences, no need to repeat details.
       return const Center(child: CircularProgressIndicator());
     }
     if (pagedMoods.isEmpty) {
-      return const Center(child: Text('No mood history'));
+      return const Center(child: Text('No mood history available'));
     }
 
     return SingleChildScrollView(
@@ -329,10 +331,11 @@ Answer briefly in 1–2 sentences, no need to repeat details.
           children: [
             const Center(
               child: Text(
-                '📈 Mood Chart Over Time',
+                '📈 Mood chart over time',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
+
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -340,8 +343,8 @@ Answer briefly in 1–2 sentences, no need to repeat details.
                 DropdownButton<String>(
                   value: filterRange,
                   items: const [
-                    DropdownMenuItem(value: '7', child: Text('Last 7 days')),
-                    DropdownMenuItem(value: '30', child: Text('Last 1 month')),
+                    DropdownMenuItem(value: '7', child: Text('Past 7 days')),
+                    DropdownMenuItem(value: '30', child: Text('Past 1 month')),
                   ],
                   onChanged: (value) {
                     if (value != null) {
@@ -368,7 +371,7 @@ Answer briefly in 1–2 sentences, no need to repeat details.
               ),
             const SizedBox(height: 24),
             const Text(
-              '📖 Mood History',
+              '📖 Mood history',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),

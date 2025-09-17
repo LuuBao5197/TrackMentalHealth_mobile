@@ -22,13 +22,13 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
 
   Future<void> fetchDiaries() async {
     try {
-      final data = await DiaryApi.getDiaries();
+      final data = await DiaryApi.getDiaries(); // ✅ Correct call to class
       setState(() {
         diaries = data;
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to load diary entries')),
+        const SnackBar(content: Text('Unable to load diaries')),
       );
     }
   }
@@ -43,7 +43,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
 
     if (!isSameDay) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You can only edit today\'s diary entry.')),
+        const SnackBar(content: Text('You can only edit today\'s diary.')),
       );
       return;
     }
@@ -60,7 +60,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
       await DiaryApi.updateDiary(
         editingDiary!['id'],
         updatedContent,
-        editingDiary!['date'],
+        editingDiary!['date'], // keep the old date
       );
 
       setState(() {
@@ -93,6 +93,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
         itemBuilder: (context, index) {
           final diary = diaries[index];
 
+          // Safe date parsing
           final dateStr = diary['date']?.toString() ?? '';
           DateTime diaryDate;
           try {
@@ -101,6 +102,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
             diaryDate = DateTime.now();
           }
 
+          // Safe content
           final content = diary['content']?.toString() ?? '';
 
           final today = DateTime.now();
@@ -117,7 +119,9 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
                 style: const TextStyle(fontSize: 14, color: Colors.grey),
               ),
               subtitle: Text(
-                content.length > 120 ? '${content.substring(0, 120)}...' : content,
+                content.length > 120
+                    ? '${content.substring(0, 120)}...'
+                    : content,
               ),
               trailing: isSameDay
                   ? IconButton(
@@ -129,6 +133,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
           );
         },
       ),
+      // Quick save button when editing
       floatingActionButton: editingDiary != null
           ? FloatingActionButton(
         backgroundColor: Colors.green,
@@ -136,6 +141,7 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
         onPressed: handleSave,
       )
           : null,
+      // Edit form
       bottomSheet: editingDiary != null
           ? Container(
         color: Colors.white,
@@ -144,8 +150,9 @@ class _DiaryHistoryPageState extends State<DiaryHistoryPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              '📝 Edit Diary Entry',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              '📝 Edit Diary',
+              style:
+              TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 8),
             TextField(

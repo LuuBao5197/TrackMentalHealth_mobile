@@ -82,6 +82,7 @@ class TrackMentalHealthApp extends StatelessWidget {
         '/hero': (context) => const HeroPage(),
         '/mood-history': (context) => const MoodHistoryPage(),
         '/history': (context) => const DiaryHistoryPage(),
+        '/user/doTest': (context) => const HeroPage(),
       },
       onGenerateRoute: (settings) {
         if (settings.name != null &&

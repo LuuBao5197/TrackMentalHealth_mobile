@@ -20,7 +20,7 @@ class _WriteDiaryPageState extends State<WriteDiaryPage> {
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         _showMessage('📝 Diary entry saved successfully!');
-        Navigator.pushReplacementNamed(context, '/history');
+        Navigator.pushNamed(context, '/history');
       } else {
         _showMessage('❌ Error: ${res.statusCode}');
       }
@@ -41,8 +41,8 @@ class _WriteDiaryPageState extends State<WriteDiaryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🧘‍♀️ Write Mood Diary'),
-        backgroundColor: Colors.teal,
+        title: const Text('🧘‍♀️ Write Emotion Diary'),
+        backgroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -62,7 +62,7 @@ class _WriteDiaryPageState extends State<WriteDiaryPage> {
                     expands: true,
                     decoration: const InputDecoration(
                       hintText:
-                      'Write down your thoughts and feelings...',
+                      'Write down what you are thinking, what you are feeling...',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -100,7 +100,7 @@ class _WriteDiaryPageState extends State<WriteDiaryPage> {
                       textStyle: const TextStyle(fontSize: 16),
                     ),
                   ),
-                ),
+                )
               ],
             ),
           ),
