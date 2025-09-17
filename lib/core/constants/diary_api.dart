@@ -27,7 +27,7 @@ class DiaryApi {
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return res.body.isNotEmpty ? jsonDecode(res.body) : null;
     } else {
-      throw Exception('Lỗi API (${res.statusCode}): ${res.body}');
+      throw Exception('Erro API (${res.statusCode}): ${res.body}');
     }
   }
 
