@@ -154,7 +154,6 @@ class _ConnectionStatusWidgetState extends State<ConnectionStatusWidget> {
   }
 }
 
-/// Widget hiển thị dialog trạng thái kết nối chi tiết
 class ConnectionStatusDialog extends StatelessWidget {
   final StompService stompService;
 
