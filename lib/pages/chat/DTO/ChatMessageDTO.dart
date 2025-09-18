@@ -21,4 +21,12 @@ class ChatMessageDTO {
       senderName: json['senderName'] ?? '',
     );
   }
+
+  factory ChatMessageDTO.fromMap(Map<String, dynamic> map) {
+    return ChatMessageDTO(
+      senderId: map['senderId'],
+      senderName: map['senderName'],
+      message: map['message'],
+    );
+  }
 }

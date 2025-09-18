@@ -1,91 +1,147 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:trackmentalhealth/helper/ZegoService.dart';
-import 'package:zego_uikit_prebuilt_video_conference/zego_uikit_prebuilt_video_conference.dart';
+import 'package:trackmentalhealth/helper/GoogleMeetService.dart';
+import 'package:trackmentalhealth/pages/chat/VideoCallPage/GoogleMeetWebViewPage.dart';
 
 class PublicCallPage extends StatefulWidget {
-  final String? paramRoomID;
-
-  const PublicCallPage({Key? key, this.paramRoomID}) : super(key: key);
+  const PublicCallPage({Key? key}) : super(key: key);
 
   @override
   State<PublicCallPage> createState() => _PublicCallPageState();
 }
 
 class _PublicCallPageState extends State<PublicCallPage> {
-  late String roomID;
-  late String userID;
-  late String userName;
+  final String roomID = "public_room"; // phòng chung test
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-
-    // Lấy roomID từ param hoặc random
-    roomID = widget.paramRoomID ?? (100000 + Random().nextInt(900000)).toString();
-
-    // Lấy userID từ backend/session (ở đây random cho demo)
-    userID = (Random().nextInt(1000000)).toString();
-    userName = "Guest ${userID.substring(userID.length - 4)}";
+    _startPublicGoogleMeet();
   }
 
-  Future<bool> _confirmExit() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Thoát cuộc gọi"),
-        content: const Text("Bạn có chắc chắn muốn thoát cuộc gọi?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text("Hủy"),
+  Future<void> _startPublicGoogleMeet() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // Tạo Google Meet URL cho WebView
+      final meetingUrl = GoogleMeetService.generateWebViewUrl(
+        'Public Group Meeting - $roomID',
+        'Group Participant',
+      );
+      
+      // Mở Google Meet trong WebView
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GoogleMeetWebViewPage(
+              meetingUrl: meetingUrl,
+              meetingTitle: 'Public Group Meeting - $roomID',
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Đồng ý"),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error starting group meeting: $e'),
+            backgroundColor: Colors.red,
           ),
-        ],
-      ),
-    );
-
-    return confirm ?? false;
+        );
+        // Use a delayed pop to avoid Navigator lock issues
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        });
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SizedBox(
-            width: constraints.maxWidth,
-            height: constraints.maxHeight,
-            child: ZegoUIKitPrebuiltVideoConference(
-              appID: ZegoService.appID,
-              appSign: ZegoService.appSign,
-              conferenceID: roomID,
-              userID: userID,
-              userName: userName,
-              config: ZegoUIKitPrebuiltVideoConferenceConfig(
-                topMenuBarConfig: ZegoTopMenuBarConfig(
-                  isVisible: false,
+      appBar: AppBar(
+        title: const Text("Group Video Call"),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_isLoading) ...[
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
                 ),
-                bottomMenuBarConfig: ZegoBottomMenuBarConfig(
-                  buttons: [
-                    ZegoMenuBarButtonName.toggleMicrophoneButton,
-                    ZegoMenuBarButtonName.toggleCameraButton,
-                    ZegoMenuBarButtonName.switchCameraButton,
-                    ZegoMenuBarButtonName.chatButton,
-                    ZegoMenuBarButtonName.leaveButton, // Nút thoát xuống dưới
-                  ],
+                SizedBox(height: 20),
+                Text(
+                  'Opening Google Meet...',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                  ),
                 ),
-                // 👉 Thêm xác nhận trước khi thoát
-                onLeaveConfirmation: (context) async {
-                  return await _confirmExit();
-                },
-              ),
-            ),
-          );
-        },
+              ] else ...[
+                Icon(
+                  Icons.groups,
+                  size: 80,
+                  color: Colors.teal,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Group Video Call',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.teal,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Room: $roomID',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Google Meet will open in WebView',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 30),
+                ElevatedButton.icon(
+                  onPressed: _startPublicGoogleMeet,
+                  icon: Icon(Icons.groups),
+                  label: Text('Join Group Meeting'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                  ),
+                ),
+                SizedBox(height: 15),
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(Icons.arrow_back),
+                  label: Text('Back to Chat'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -223,98 +223,101 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ? const Center(
         child: Text("No notifications", style: TextStyle(fontSize: 16)),
       )
-          : ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: filteredNotifications.length,
-        itemBuilder: (context, index) {
-          final noti = filteredNotifications[index];
-          bool isRead = noti['isRead'] == true;
+          : RefreshIndicator(
+        onRefresh: fetchNotifications, // khi kéo xuống, gọi fetch lại dữ liệu
+        child: ListView.builder(
+          padding: const EdgeInsets.all(12),
+          itemCount: filteredNotifications.length,
+          itemBuilder: (context, index) {
+            final noti = filteredNotifications[index];
+            bool isRead = noti['isRead'] == true;
 
-          return Dismissible(
-            key: ValueKey(noti['id']),
-            direction: DismissDirection.endToStart,
-            confirmDismiss: (direction) async {
-              return await showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("Xác nhận xóa"),
-                  content: const Text(
-                      "Bạn có chắc chắn muốn xóa thông báo này không?"),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text("Hủy")),
-                    ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text("Xóa")),
-                  ],
-                ),
-              );
-            },
-            onDismissed: (_) => deleteNotification(noti['id']),
-            background: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.error,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: const Icon(Icons.delete,
-                  color: Colors.white, size: 28),
-            ),
-            child: Card(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              color: isRead
-                  ? theme.colorScheme.surfaceVariant
-                  : theme.colorScheme.surface,
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(16),
-                leading: Icon(
-                  isRead
-                      ? Icons.notifications_none
-                      : Icons.notifications_active,
-                  color: isRead
-                      ? theme.colorScheme.onSurfaceVariant
-                      : theme.colorScheme.error,
-                  size: 32,
-                ),
-                title: Text(
-                  noti['title'] ?? '',
-                  style: TextStyle(
-                    fontWeight:
-                    isRead ? FontWeight.normal : FontWeight.bold,
-                    fontSize: 16,
-                    color: theme.colorScheme.onSurface,
+            return Dismissible(
+              key: ValueKey(noti['id']),
+              direction: DismissDirection.endToStart,
+              confirmDismiss: (direction) async {
+                return await showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text("Xác nhận xóa"),
+                    content: const Text(
+                        "Bạn có chắc chắn muốn xóa thông báo này không?"),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text("Hủy")),
+                      ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text("Xóa")),
+                    ],
                   ),
+                );
+              },
+              onDismissed: (_) => deleteNotification(noti['id']),
+              background: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.error,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                subtitle: Text(
-                  noti['message'] ?? '',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style:
-                  TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                ),
-                trailing: isRead
-                    ? null
-                    : Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.error,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                onTap: () {
-                  markAsRead(noti);
-                  showNotificationDetail(noti);
-                },
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: const Icon(Icons.delete,
+                    color: Colors.white, size: 28),
               ),
-            ),
-          );
-        },
+              child: Card(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                color: isRead
+                    ? theme.colorScheme.surfaceVariant
+                    : theme.colorScheme.surface,
+                elevation: 3,
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: Icon(
+                    isRead
+                        ? Icons.notifications_none
+                        : Icons.notifications_active,
+                    color: isRead
+                        ? theme.colorScheme.onSurfaceVariant
+                        : theme.colorScheme.error,
+                    size: 32,
+                  ),
+                  title: Text(
+                    noti['title'] ?? '',
+                    style: TextStyle(
+                      fontWeight:
+                      isRead ? FontWeight.normal : FontWeight.bold,
+                      fontSize: 16,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  subtitle: Text(
+                    noti['message'] ?? '',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                    TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  trailing: isRead
+                      ? null
+                      : Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  onTap: () {
+                    markAsRead(noti);
+                    showNotificationDetail(noti);
+                  },
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
