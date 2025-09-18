@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'StompService.dart';
 import 'showToast.dart';
+import 'CallSignalManager.dart';
 
 class NotificationListenerWidget extends StatefulWidget {
   final int userId;
@@ -66,12 +67,22 @@ class _NotificationListenerWidgetState
   void _subscribeCallSession(int sessionId) {
     final callTopic = "/topic/call/$sessionId";
     _stompService.subscribe(callTopic, (msg) {
-      print("📞 Call signal: $msg");
-      showToast("Incoming call...", "info");
-      widget.onEvent?.call(msg, "call");
+      print("📞 [NotificationListener] Call signal: $msg");
+      print("📞 [NotificationListener] Signal type: ${msg['type']}");
+      
+      // Xử lý call signal thông qua CallSignalManager
+      // Lưu ý: NotificationListenerWidget không có context, nên chỉ log và gọi callback
+      if (msg['type'] == 'CALL_REQUEST') {
+        print("📞 [NotificationListener] Incoming call request detected");
+        showToast("Incoming call...", "info");
+        widget.onEvent?.call(msg, "call");
+      } else {
+        print("📞 [NotificationListener] Other call signal: ${msg['type']}");
+        widget.onEvent?.call(msg, "call");
+      }
     });
     _subscribedCallSessions.add(sessionId);
-    print("✅ Subscribed to call session $sessionId");
+    print("✅ [NotificationListener] Subscribed to call session $sessionId");
   }
 
   @override

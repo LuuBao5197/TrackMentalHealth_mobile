@@ -6,9 +6,11 @@ import 'package:trackmentalhealth/core/constants/chat_api.dart';
 import 'package:trackmentalhealth/models/User.dart';
 import 'package:trackmentalhealth/utils/StompService.dart';
 import 'package:trackmentalhealth/widgets/ConnectionStatusWidget.dart';
+import '../../core/constants/api_constants.dart';
 import '../../helper/UserSession.dart';
 import '../../models/ChatMessage.dart';
 import '../../utils/CallInitiator.dart';
+import '../../utils/CallSignalManager.dart';
 import 'DTO/ChatMessageDTO.dart';
 import 'VideoCallPage/PrivateCallPage.dart';
 import 'VideoCallPage/AgoraVideoCallPage.dart';
@@ -79,49 +81,293 @@ class _ChatDetailState extends State<ChatDetail> {
 
       // Kết nối Stomp realtime
       stompService = StompService();
+      print("🔄 [ChatDetail] ====== INITIALIZING WEBSOCKET ======");
+      print("🔄 [ChatDetail] Session ID: ${widget.sessionId}");
+      print("🔄 [ChatDetail] Current User ID: $currentUserId");
+      print("🔄 [ChatDetail] Target User ID: ${widget.user.id}");
+      print("🔄 [ChatDetail] WebSocket URL: ws://${ApiConstants.ipLocal}:9999/ws");
+      
       stompService.connect(
         onConnect: (_) {
+          print("✅ [ChatDetail] ====== ONCONNECT CALLBACK CALLED ======");
+          print("✅ [ChatDetail] WebSocket connected for session: ${widget.sessionId}");
+          print("✅ [ChatDetail] Connection status: ${stompService.isConnected}");
+          print("✅ [ChatDetail] Subscribing to: /topic/chat/${widget.sessionId}");
+          
+          print("🔔 [ChatDetail] About to call subscribe for chat...");
           stompService.subscribe("/topic/chat/${widget.sessionId}", (frame) {
-            // frame đã là Map<String, dynamic>
-            final dto = ChatMessageDTO.fromMap(frame); // <-- dùng fromMap thay vì fromRawJson
+            print("🔔 [ChatDetail] ====== WEBSOCKET MESSAGE RECEIVED ======");
+            print("🔔 [ChatDetail] Raw frame: $frame");
+            print("🔔 [ChatDetail] Frame type: ${frame.runtimeType}");
+            
+            try {
+              // Parse dữ liệu từ WebSocket
+              final dto = ChatMessageDTO.fromMap(frame);
+              print("🔔 [ChatDetail] Parsed DTO: message='${dto.message}', senderId=${dto.senderId}, senderName='${dto.senderName}'");
 
-            final isCurrentUser = dto.senderId.toString() == currentUserId;
+              final isCurrentUser = dto.senderId.toString() == currentUserId;
+              print("🔔 [ChatDetail] Is current user: $isCurrentUser (currentUserId: $currentUserId)");
 
-            final textMsg = types.TextMessage(
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              text: dto.message,
-              createdAt: DateTime.now().millisecondsSinceEpoch,
-              author: types.User(
-                id: dto.senderId.toString(),
-                firstName: dto.senderName,
-                imageUrl: isCurrentUser ? currentUserAvatar : widget.user.avatar,
-              ),
-            );
-            setState(() {
-              messages.insert(0, textMsg);
-            });
+              // Kiểm tra xem tin nhắn này có phải từ user hiện tại không
+              // Nếu có thì có thể đã được hiển thị qua optimistic update
+              if (isCurrentUser) {
+                // Kiểm tra xem tin nhắn đã tồn tại chưa (tránh duplicate)
+                final messageExists = messages.any((msg) => 
+                  msg.text == dto.message && 
+                  msg.author.id == dto.senderId.toString()
+                );
+                
+                print("🔔 [ChatDetail] Message already exists: $messageExists");
+                if (messageExists) {
+                  print("🔔 [ChatDetail] Skipping duplicate message");
+                  return;
+                }
+              }
+
+              final textMsg = types.TextMessage(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                text: dto.message,
+                createdAt: DateTime.now().millisecondsSinceEpoch,
+                author: types.User(
+                  id: dto.senderId.toString(),
+                  firstName: dto.senderName,
+                  imageUrl: isCurrentUser ? currentUserAvatar : widget.user.avatar,
+                ),
+              );
+              
+              print("🔔 [ChatDetail] Adding message to UI: '${dto.message}' from ${dto.senderName}");
+              setState(() {
+                messages.insert(0, textMsg);
+              });
+              print("🔔 [ChatDetail] Message added successfully. Total messages: ${messages.length}");
+              print("🔔 [ChatDetail] ====== END WEBSOCKET MESSAGE ======");
+            } catch (e) {
+              print("❌ [ChatDetail] Error parsing message: $e");
+              print("❌ [ChatDetail] Raw frame that caused error: $frame");
+            }
+          });
+
+          // Subscribe call signals cho session này
+          print("📞 [ChatDetail] Subscribing to call signals: /topic/call/${widget.sessionId}");
+          print("📞 [ChatDetail] Current user ID for call: $currentUserId");
+          print("📞 [ChatDetail] Target user ID for call: ${widget.user.id}");
+          
+          stompService.subscribe("/topic/call/${widget.sessionId}", (signal) {
+            print("📞 [ChatDetail] ====== CALL SIGNAL RECEIVED ======");
+            print("📞 [ChatDetail] Call signal: $signal");
+            print("📞 [ChatDetail] Signal type: ${signal['type']}");
+            print("📞 [ChatDetail] Signal callerId: ${signal['callerId']}");
+            print("📞 [ChatDetail] Signal calleeId: ${signal['calleeId']}");
+            print("📞 [ChatDetail] Signal sessionId: ${signal['sessionId']}");
+            print("📞 [ChatDetail] Current user ID: $currentUserId");
+            
+            // Xử lý call signal thông qua CallSignalManager
+            if (currentUserId != null && currentUserFullName != null) {
+              print("📞 [ChatDetail] Calling CallSignalManager.handleCallSignal...");
+              CallSignalManager.handleCallSignal(
+                signal: signal,
+                currentUserId: currentUserId!,
+                currentUserName: currentUserFullName!,
+                sessionId: widget.sessionId.toString(),
+                stompService: stompService,
+                context: context,
+              );
+            } else {
+              print("❌ [ChatDetail] Cannot handle call signal - missing user info");
+            }
           });
         },
+        onError: (error) {
+          print("❌ [ChatDetail] WebSocket error: $error");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Chat connection error: $error'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        },
       );
+      
+      // Debug: Kiểm tra connection status sau 2 giây
+      Future.delayed(Duration(seconds: 2), () {
+        print("🔍 [ChatDetail] ====== CONNECTION STATUS CHECK ======");
+        print("🔍 [ChatDetail] Connection status after 2s: ${stompService.isConnected}");
+        print("🔍 [ChatDetail] Is connecting: ${stompService.isConnecting}");
+        print("🔍 [ChatDetail] Reconnect attempts: ${stompService.reconnectAttempts}");
+        print("🔍 [ChatDetail] Session ID: ${widget.sessionId}");
+        print("🔍 [ChatDetail] Current User ID: $currentUserId");
+        print("🔍 [ChatDetail] Target User ID: ${widget.user.id}");
+        
+        if (!stompService.isConnected) {
+          print("❌ [ChatDetail] WebSocket not connected after 2 seconds!");
+          print("❌ [ChatDetail] Attempting manual reconnect...");
+          stompService.reconnect();
+        } else {
+          print("✅ [ChatDetail] WebSocket is connected!");
+          print("🔔 [ChatDetail] Manually subscribing to chat topic...");
+          stompService.subscribe("/topic/chat/${widget.sessionId}", (frame) {
+            print("🔔 [ChatDetail] ====== MANUAL SUBSCRIBE MESSAGE RECEIVED ======");
+            print("🔔 [ChatDetail] Raw frame: $frame");
+            print("🔔 [ChatDetail] Frame type: ${frame.runtimeType}");
+            
+            try {
+              // Parse dữ liệu từ WebSocket
+              final dto = ChatMessageDTO.fromMap(frame);
+              print("🔔 [ChatDetail] Parsed DTO: message='${dto.message}', senderId=${dto.senderId}, senderName='${dto.senderName}'");
+
+              final isCurrentUser = dto.senderId.toString() == currentUserId;
+              print("🔔 [ChatDetail] Is current user: $isCurrentUser (currentUserId: $currentUserId)");
+
+              // Kiểm tra xem tin nhắn này có phải từ user hiện tại không
+              if (isCurrentUser) {
+                // Kiểm tra xem tin nhắn đã tồn tại chưa (tránh duplicate)
+                final messageExists = messages.any((msg) => 
+                  msg.text == dto.message && 
+                  msg.author.id == dto.senderId.toString()
+                );
+                
+                print("🔔 [ChatDetail] Message already exists: $messageExists");
+                if (messageExists) {
+                  print("🔔 [ChatDetail] Skipping duplicate message");
+                  return;
+                }
+              }
+
+              final textMsg = types.TextMessage(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                text: dto.message,
+                createdAt: DateTime.now().millisecondsSinceEpoch,
+                author: types.User(
+                  id: dto.senderId.toString(),
+                  firstName: dto.senderName,
+                  imageUrl: isCurrentUser ? currentUserAvatar : widget.user.avatar,
+                ),
+              );
+              
+              print("🔔 [ChatDetail] Adding message to UI: '${dto.message}' from ${dto.senderName}");
+              setState(() {
+                messages.insert(0, textMsg);
+              });
+              print("🔔 [ChatDetail] Message added successfully. Total messages: ${messages.length}");
+              print("🔔 [ChatDetail] ====== END MANUAL SUBSCRIBE MESSAGE ======");
+            } catch (e) {
+              print("❌ [ChatDetail] Error parsing message: $e");
+              print("❌ [ChatDetail] Raw frame that caused error: $frame");
+            }
+          });
+        }
+      });
+
+      // Test: Gửi test message để kiểm tra connection
+      Future.delayed(Duration(seconds: 5), () {
+        print("🧪 [ChatDetail] ====== TESTING WEBSOCKET CONNECTION ======");
+        print("🧪 [ChatDetail] Sending test call signal...");
+        
+        // Gửi test call signal
+        stompService.sendCallSignal(widget.sessionId, {
+          "type": "TEST_CALL_REQUEST",
+          "callerId": currentUserId,
+          "calleeId": widget.user.id.toString(),
+          "sessionId": widget.sessionId.toString(),
+          "timestamp": DateTime.now().millisecondsSinceEpoch,
+        });
+        
+        print("🧪 [ChatDetail] Test call signal sent");
+      });
     } catch (e) {
       setState(() {
         error = e.toString();
         loading = false;
+
       });
     }
   }
 
   void _handleSendPressed(types.PartialText message) async {
-    if (currentUserId == null || widget.user.id == null) return;
+    print("🚀 [ChatDetail] ====== HANDLE SEND PRESSED ======");
+    print("🚀 [ChatDetail] Message text: '${message.text}'");
+    print("🚀 [ChatDetail] Current user ID: $currentUserId");
+    print("🚀 [ChatDetail] Target user ID: ${widget.user.id}");
+    print("🚀 [ChatDetail] Session ID: ${widget.sessionId}");
+    
+    if (currentUserId == null || widget.user.id == null) {
+      print("❌ [ChatDetail] Missing user IDs - currentUserId: $currentUserId, targetUserId: ${widget.user.id}");
+      return;
+    }
 
-    final payload = {
-      "message": message.text,
-      "sender": {"id": int.parse(currentUserId!)},
-      "receiver": {"id": widget.user.id},
-      "session": {"id": widget.sessionId},
-    };
+    // Kiểm tra tin nhắn không rỗng
+    if (message.text.trim().isEmpty) {
+      print("⚠️ [ChatDetail] Empty message text");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Message cannot be empty'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
-    stompService.sendMessage("/app/chat/${widget.sessionId}", payload);
+    print("🔍 [ChatDetail] Checking WebSocket connection...");
+    print("🔍 [ChatDetail] isConnected: ${stompService.isConnected}");
+    print("🔍 [ChatDetail] isConnecting: ${stompService.isConnecting}");
+    print("🔍 [ChatDetail] reconnectAttempts: ${stompService.reconnectAttempts}");
+    
+    if (!stompService.isConnected) {
+      print("❌ [ChatDetail] WebSocket not connected, attempting reconnect...");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Connection lost, attempting to reconnect...'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      // Thử kết nối lại
+      stompService.reconnect();
+      return;
+    }
+
+    try {
+      final payload = {
+        "message": message.text.trim(),
+        "sender": {"id": int.parse(currentUserId!)},
+        "receiver": {"id": widget.user.id},
+        "session": {"id": widget.sessionId},
+      };
+
+      print("📤 [ChatDetail] ====== SENDING MESSAGE ======");
+      print("📤 [ChatDetail] Destination: /app/chat/${widget.sessionId}");
+      print("📤 [ChatDetail] Payload: $payload");
+      print("📤 [ChatDetail] Connection status: ${stompService.isConnected}");
+      
+      stompService.sendMessage("/app/chat/${widget.sessionId}", payload);
+      
+      // Hiển thị tin nhắn tạm thời trong UI (optimistic update)
+      final tempMessage = types.TextMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text: message.text,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+        author: types.User(
+          id: currentUserId!,
+          firstName: currentUserFullName,
+          imageUrl: currentUserAvatar,
+        ),
+      );
+      
+      print("📤 [ChatDetail] Adding optimistic message to UI: '${message.text}'");
+      setState(() {
+        messages.insert(0, tempMessage);
+      });
+      print("📤 [ChatDetail] Optimistic message added. Total messages: ${messages.length}");
+      print("📤 [ChatDetail] ====== END SENDING MESSAGE ======");
+      
+    } catch (e) {
+      print("❌ [ChatDetail] Error sending message: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error sending message: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _startVideoCall() async {
@@ -131,7 +377,7 @@ class _ChatDetailState extends State<ChatDetail> {
     if (!stompService.isConnected) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không thể gọi video: Mất kết nối mạng'),
+          content: Text('Cannot make video call: Network connection lost'),
           backgroundColor: Colors.red,
         ),
       );
@@ -212,11 +458,6 @@ class _ChatDetailState extends State<ChatDetail> {
             icon: Icon(Icons.videocam_outlined, size: 35, color: Theme.of(context).colorScheme.onPrimary),
             onPressed: () => _startVideoCall(),
           ),
-          // Nút thông tin kết nối
-          IconButton(
-            icon: Icon(Icons.network_check, color: Theme.of(context).colorScheme.onPrimary),
-            onPressed: () => _showConnectionDialog(),
-          ),
         ],
       ),
       body: SafeArea(
@@ -245,7 +486,8 @@ class _ChatDetailState extends State<ChatDetail> {
                 inputTextColor: Theme.of(context).colorScheme.onSurface,
               ),
             ),
-            // Lắng nghe call signals cho người nhận
+            // Lắng nghe call signals cho người nh
+            // Lắng nghe call signals cho người nh
             if (currentUserId != null)
               CallSignalListener(
                 sessionId: widget.sessionId.toString(),

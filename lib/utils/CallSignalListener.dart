@@ -25,20 +25,31 @@ class _CallSignalListenerState extends State<CallSignalListener> {
   void initState() {
     super.initState();
 
-    widget.stompService.connect(
-      onConnect: (frame) {
-        print("📞 [CallSignalListener] Đã kết nối, subscribe call signals");
-        // Lắng nghe call signals cho session cụ thể
-        widget.stompService.subscribe("/topic/call/${widget.sessionId}", (signal) {
-          print("📞 [CallSignalListener] Nhận call signal: $signal");
-          _handleCallSignal(signal);
-        });
-      },
-      onError: (error) {
-        print("❌ [CallSignalListener] Lỗi kết nối: $error");
-        // Có thể hiển thị thông báo lỗi cho user
-      },
-    );
+    // Sử dụng StompService đã có sẵn thay vì tạo mới
+    if (widget.stompService.isConnected) {
+      print("📞 [CallSignalListener] StompService đã kết nối, subscribe call signals ngay");
+      _subscribeToCallSignals();
+    } else {
+      print("📞 [CallSignalListener] StompService chưa kết nối, chờ kết nối...");
+      widget.stompService.connect(
+        onConnect: (frame) {
+          print("📞 [CallSignalListener] Đã kết nối, subscribe call signals");
+          _subscribeToCallSignals();
+        },
+        onError: (error) {
+          print("❌ [CallSignalListener] Lỗi kết nối: $error");
+          // Có thể hiển thị thông báo lỗi cho user
+        },
+      );
+    }
+  }
+
+  void _subscribeToCallSignals() {
+    // Lắng nghe call signals cho session cụ thể
+    widget.stompService.subscribe("/topic/call/${widget.sessionId}", (signal) {
+      print("📞 [CallSignalListener] Nhận call signal: $signal");
+      _handleCallSignal(signal);
+    });
   }
 
   void _handleCallSignal(Map<String, dynamic> signal) {
@@ -55,7 +66,7 @@ class _CallSignalListenerState extends State<CallSignalListener> {
 
   @override
   void dispose() {
-    widget.stompService.disconnect();
+    // Không disconnect StompService vì nó được dùng chung với ChatDetail
     super.dispose();
   }
 
