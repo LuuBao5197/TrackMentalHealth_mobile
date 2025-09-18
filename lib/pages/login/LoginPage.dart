@@ -58,13 +58,17 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // --- 2. Gửi ảnh sang Flask để lấy embedding ---
+      // --- 2. Gửi ảnh sang Flask ---
       final flaskUrl = "${ApiConstants.flaskBaseUrl}/generate-embedding";
+      print("Flask request URL: $flaskUrl");
+
       final request = http.MultipartRequest('POST', Uri.parse(flaskUrl))
         ..files.add(await http.MultipartFile.fromPath('image', pickedFile.path));
 
       final flaskResponse = await request.send();
       final flaskBody = await flaskResponse.stream.bytesToString();
+      print("Flask raw response: $flaskBody");
+
       if (flaskResponse.statusCode != 200) {
         String msg;
         try {
@@ -77,13 +81,21 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
+      // Flask trả về embedding
+      dynamic flaskData = jsonDecode(flaskBody);
+      print("Flask decoded: $flaskData");
 
-      final flaskData = jsonDecode(flaskBody);
-      final embedding = List<double>.from(flaskData); // Flask trả mảng
+      // Nếu Flask trả về { "embedding": [...] }
+      final embedding = flaskData is List
+          ? List<double>.from(flaskData)
+          : List<double>.from(flaskData['embedding'] ?? []);
 
       // --- 3. Gửi email + embedding sang Spring Boot ---
+      final loginUrl = ApiConstants.loginWithFaceId;
+      print("Spring request URL: $loginUrl");
+
       final response = await http.post(
-        Uri.parse(ApiConstants.loginWithFaceId),
+        Uri.parse(loginUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': _saveEmail,
@@ -91,23 +103,36 @@ class _LoginPageState extends State<LoginPage> {
         }),
       );
 
+      print("Spring status: ${response.statusCode}");
+      print("Spring raw body: ${response.body}");
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final token = data['token'];
+        try {
+          final data = jsonDecode(response.body);
+          print("Spring decoded: $data");
 
-        final decodedToken = JwtDecoder.decode(token);
-        final userId = decodedToken['userId'];
+          final token = data['token'];
+          if (token == null) throw Exception("Token not found in response");
 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
-        await prefs.setInt('userId', userId);
-        await prefs.setString('email', _saveEmail!);
+          final decodedToken = JwtDecoder.decode(token);
+          print("Decoded token: $decodedToken");
 
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
+          final userId = decodedToken['userId'];
+          if (userId == null) throw Exception("userId missing in token");
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', token);
+          await prefs.setInt('userId', userId is int ? userId : int.parse(userId.toString()));
+          await prefs.setString('email', _saveEmail!);
+
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+          );
+        } catch (err) {
+          setState(() => _error = "Parse response error: $err");
+        }
       } else {
         setState(() => _error = _getErrorMessage(response));
       }
@@ -115,6 +140,7 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _error = "FaceID login failed: $e");
     }
   }
+
 
   void _switchToAnotherAccount() async {
     final prefs = await SharedPreferences.getInstance();
