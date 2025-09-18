@@ -123,11 +123,11 @@ class _ConnectionStatusWidgetState extends State<ConnectionStatusWidget> {
   Widget _buildStatusText() {
     String text;
     if (_isConnected) {
-      text = "Đã kết nối";
+      text = "Connected";
     } else if (_isConnecting) {
-      text = "Đang kết nối...";
+      text = "Connecting...";
     } else {
-      text = "Mất kết nối";
+      text = "Disconnected";
       if (_reconnectAttempts > 0) {
         text += " ($_reconnectAttempts/5)";
       }
@@ -170,7 +170,7 @@ class ConnectionStatusDialog extends StatelessWidget {
         children: [
           Icon(Icons.network_check, color: Colors.blue),
           SizedBox(width: 8),
-          Text("Trạng thái kết nối"),
+          Text("Connection Status"),
         ],
       ),
       content: Column(
@@ -178,17 +178,17 @@ class ConnectionStatusDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildStatusRow(
-            "Kết nối:",
-            stompService.isConnected ? "Đã kết nối" : "Chưa kết nối",
+            "Connection:",
+            stompService.isConnected ? "Connected" : "Disconnected",
             stompService.isConnected ? Colors.green : Colors.red,
           ),
           _buildStatusRow(
-            "Đang kết nối:",
-            stompService.isConnecting ? "Có" : "Không",
+            "Connecting:",
+            stompService.isConnecting ? "Yes" : "No",
             stompService.isConnecting ? Colors.orange : Colors.grey,
           ),
           _buildStatusRow(
-            "Số lần thử:",
+            "Attempts:",
             "${stompService.reconnectAttempts}/5",
             Colors.blue,
           ),
@@ -202,7 +202,7 @@ class ConnectionStatusDialog extends StatelessWidget {
                   Navigator.pop(context);
                 },
                 icon: Icon(Icons.refresh),
-                label: Text("Kết nối lại"),
+                label: Text("Reconnect"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
@@ -213,7 +213,7 @@ class ConnectionStatusDialog extends StatelessWidget {
                   Navigator.pop(context);
                 },
                 icon: Icon(Icons.close),
-                label: Text("Đóng"),
+                label: Text("Close"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey,
                   foregroundColor: Colors.white,

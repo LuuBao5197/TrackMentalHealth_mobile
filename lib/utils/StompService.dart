@@ -27,6 +27,11 @@ class StompService {
     required void Function(StompFrame frame) onConnect,
     void Function(dynamic error)? onError,
   }) {
+    print("🔄 [StompService] ====== CONNECT CALLED ======");
+    print("🔄 [StompService] WebSocket URL: $_socketUrl");
+    print("🔄 [StompService] Current connection status: $_connected");
+    print("🔄 [StompService] Is connecting: $_isConnecting");
+    
     _onConnectCallback = onConnect;
     _onErrorCallback = onError;
     
@@ -35,45 +40,63 @@ class StompService {
   
   /// Kết nối nội bộ với retry logic
   void _connectInternal() {
-    if (_isConnecting || _connected) return;
+    print("🔄 [StompService] ====== CONNECT INTERNAL ======");
+    print("🔄 [StompService] _isConnecting: $_isConnecting");
+    print("🔄 [StompService] _connected: $_connected");
+    print("🔄 [StompService] _reconnectAttempts: $_reconnectAttempts");
+    
+    if (_isConnecting || _connected) {
+      print("⚠️ [StompService] Already connecting or connected, skipping");
+      return;
+    }
     
     _isConnecting = true;
     _reconnectAttempts++;
     
-    print('🔄 [StompService] Kết nối lần $_reconnectAttempts/$_maxReconnectAttempts...');
-    
+    print("🔄 [StompService] Creating StompClient with URL: $_socketUrl");
     _stompClient = StompClient(
       config: StompConfig(
         url: _socketUrl,
         onConnect: (frame) {
+          print("✅ [StompService] ====== CONNECTED ======");
+          print("✅ [StompService] Connect frame: $frame");
+          
           _connected = true;
           _isConnecting = false;
           _reconnectAttempts = 0;
           _reconnectTimer?.cancel();
           
-          print("✅ [StompService] Đã kết nối thành công");
-          
+          print("✅ [StompService] Starting heartbeat...");
           // Khởi động heartbeat
           _startHeartbeat();
           
+          print("✅ [StompService] Resubscribing all subscriptions...");
           // Resubscribe tất cả subscriptions
           _resubscribeAll();
           
+          print("✅ [StompService] Calling onConnect callback...");
+          print("✅ [StompService] _onConnectCallback is null: ${_onConnectCallback == null}");
           // Gọi callback
           if (_onConnectCallback != null) {
+            print("✅ [StompService] Calling _onConnectCallback...");
             _onConnectCallback!(frame);
+            print("✅ [StompService] _onConnectCallback completed");
+          } else {
+            print("❌ [StompService] _onConnectCallback is null!");
           }
+          print("✅ [StompService] ====== CONNECT COMPLETE ======");
         },
         beforeConnect: () async {
-          print('🔄 [StompService] Đang kết nối...');
           await Future.delayed(const Duration(milliseconds: 500));
         },
         onStompError: (frame) {
-          print('❌ [StompService] STOMP error: ${frame.body}');
+          print("❌ [StompService] ====== STOMP ERROR ======");
+          print("❌ [StompService] Error frame: $frame");
           _handleConnectionError();
         },
         onWebSocketError: (dynamic error) {
-          print('❌ [StompService] WebSocket error: $error');
+          print("❌ [StompService] ====== WEBSOCKET ERROR ======");
+          print("❌ [StompService] Error: $error");
           _handleConnectionError();
           if (_onErrorCallback != null) {
             _onErrorCallback!(error);
@@ -83,7 +106,6 @@ class StompService {
           _connected = false;
           _isConnecting = false;
           _heartbeatTimer?.cancel();
-          print('🔌 [StompService] Đã ngắt kết nối');
           
           // Tự động kết nối lại nếu chưa đạt max attempts
           if (_reconnectAttempts < _maxReconnectAttempts) {
@@ -96,27 +118,45 @@ class StompService {
       ),
     );
 
+    print("🔄 [StompService] Activating StompClient...");
     _stompClient.activate();
+    print("🔄 [StompService] StompClient activated");
   }
   
   /// Xử lý lỗi kết nối
   void _handleConnectionError() {
+    print("❌ [StompService] ====== CONNECTION ERROR ======");
+    print("❌ [StompService] _reconnectAttempts: $_reconnectAttempts");
+    print("❌ [StompService] _maxReconnectAttempts: $_maxReconnectAttempts");
+    
     _connected = false;
     _isConnecting = false;
     
     if (_reconnectAttempts < _maxReconnectAttempts) {
+      print("🔄 [StompService] Scheduling reconnect...");
       _scheduleReconnect();
     } else {
-      print('❌ [StompService] Đã thử kết nối $_maxReconnectAttempts lần, dừng lại');
+      print("❌ [StompService] Max reconnect attempts reached, giving up");
     }
   }
   
   /// Lên lịch kết nối lại
   void _scheduleReconnect() {
+    print("🔄 [StompService] ====== SCHEDULING RECONNECT ======");
+    print("🔄 [StompService] Delay: $_reconnectDelay");
+    print("🔄 [StompService] Current attempts: $_reconnectAttempts");
+    
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(_reconnectDelay, () {
+      print("🔄 [StompService] Reconnect timer fired");
+      print("🔄 [StompService] _connected: $_connected");
+      print("🔄 [StompService] _reconnectAttempts: $_reconnectAttempts");
+      
       if (!_connected && _reconnectAttempts < _maxReconnectAttempts) {
+        print("🔄 [StompService] Attempting reconnect...");
         _connectInternal();
+      } else {
+        print("⚠️ [StompService] Reconnect conditions not met");
       }
     });
   }
@@ -145,71 +185,97 @@ class StompService {
         }),
       );
     } catch (e) {
-      print('❌ [StompService] Lỗi gửi heartbeat: $e');
+      // Silent fail for heartbeat
     }
   }
   
   /// Resubscribe tất cả subscriptions
   void _resubscribeAll() {
-    print('🔄 [StompService] Resubscribe ${_subscriptions.length} subscriptions');
+    print("🔄 [StompService] ====== RESUBSCRIBE ALL ======");
+    print("🔄 [StompService] Number of subscriptions: ${_subscriptions.length}");
     _subscriptions.forEach((destination, callback) {
+      print("🔄 [StompService] Resubscribing to: $destination");
       _subscribeInternal(destination, callback);
     });
+    print("🔄 [StompService] ====== RESUBSCRIBE COMPLETE ======");
   }
 
   /// Subscribe tới một topic (chat hoặc call)
   void subscribe(String destination, void Function(dynamic parsed) callback) {
+    print("🔔 [StompService] ====== SUBSCRIBE CALLED ======");
+    print("🔔 [StompService] Destination: $destination");
+    print("🔔 [StompService] Connected: $_connected");
+    print("🔔 [StompService] Is connecting: $_isConnecting");
+    print("🔔 [StompService] WebSocket URL: $_socketUrl");
+    
     // Lưu subscription để resubscribe khi kết nối lại
     _subscriptions[destination] = callback;
     
     if (!_connected) {
-      print('⚠️ [StompService] Chưa kết nối, sẽ subscribe khi kết nối thành công');
+      print("⚠️ [StompService] Not connected, will subscribe when connected");
+      print("⚠️ [StompService] Subscription saved for later: $destination");
       return;
     }
     
+    print("✅ [StompService] Calling _subscribeInternal...");
     _subscribeInternal(destination, callback);
   }
   
   /// Subscribe nội bộ
   void _subscribeInternal(String destination, void Function(dynamic parsed) callback) {
-    print('🔔 [StompService] Subscribing to $destination');
+    print("🔔 [StompService] ====== SUBSCRIBE INTERNAL ======");
+    print("🔔 [StompService] Destination: $destination");
+    print("🔔 [StompService] StompClient active: ${_stompClient.connected}");
 
     _stompClient.subscribe(
       destination: destination,
       callback: (frame) {
+        print("🔔 [StompService] ====== FRAME RECEIVED ======");
+        print("🔔 [StompService] Destination: $destination");
+        print("🔔 [StompService] Frame type: ${frame.runtimeType}");
+        print("🔔 [StompService] Frame content: $frame");
+        
         try {
           dynamic raw;
 
           // Trường hợp frame có body (StompFrame)
           if (frame is StompFrame) {
+            print("🔔 [StompService] Frame is StompFrame");
+            print("🔔 [StompService] Frame body: ${frame.body}");
+            print("🔔 [StompService] Frame headers: ${frame.headers}");
+            
             if (frame.body == null || frame.body!.isEmpty) {
-              print("⚠️ [StompService] Empty frame body from $destination");
+              print("⚠️ [StompService] Empty frame body");
               return;
             }
-            print("📩 [StompService] Raw frame body from $destination: ${frame.body}");
             raw = jsonDecode(frame.body!);
           }
           // Trường hợp lib trả thẳng Map hoặc String
           else if (frame is String) {
-            print("📩 [StompService] Raw string from $destination: $frame");
+            print("🔔 [StompService] Frame is String: $frame");
             raw = jsonDecode(frame as String);
           } else if (frame is Map<String, dynamic>) {
-            print("📩 [StompService] Raw map from $destination: $frame");
+            print("🔔 [StompService] Frame is Map: $frame");
             raw = frame;
           } else {
-            print("⚠️ [StompService] Unexpected frame type: ${frame.runtimeType}");
+            print("⚠️ [StompService] Unknown frame type: ${frame.runtimeType}");
             return;
           }
 
+          print("🔔 [StompService] Parsed raw data: $raw");
+          print("🔔 [StompService] Raw data type: ${raw.runtimeType}");
+
           // Trả về cho callback
           if (raw is Map<String, dynamic>) {
+            print("✅ [StompService] Calling callback with parsed data");
             callback(raw);
           } else {
-            print("❌ [StompService] Unexpected parsed type: ${raw.runtimeType}");
+            print("❌ [StompService] Raw data is not Map<String, dynamic>");
           }
-        } catch (e, s) {
-          print("❌ [StompService] Error parsing JSON from $destination: $e");
-          print(s);
+          print("🔔 [StompService] ====== END FRAME PROCESSING ======");
+        } catch (e) {
+          print("❌ [StompService] Error parsing frame: $e");
+          print("❌ [StompService] Raw frame: $frame");
         }
       },
     );
@@ -223,14 +289,19 @@ class StompService {
   /// Gửi tín hiệu video call (offer, answer, candidate)
   void sendCallSignal(int sessionId, Map<String, dynamic> signal) {
     final destination = "/app/call/$sessionId";
-    print("📞 [StompService] Gửi call signal đến $destination: $signal");
     _send(destination, signal);
   }
 
   /// Hàm private gửi dữ liệu chung
   void _send(String destination, Map<String, dynamic> body) {
+    print("📤 [StompService] ====== SENDING DATA ======");
+    print("📤 [StompService] Destination: $destination");
+    print("📤 [StompService] Body: $body");
+    print("📤 [StompService] Connected: $_connected");
+    print("📤 [StompService] Is connecting: $_isConnecting");
+    
     if (!_connected) {
-      print('⚠️ [StompService] Không thể gửi, chưa kết nối STOMP');
+      print("⚠️ [StompService] Not connected, attempting to reconnect...");
       // Thử kết nối lại nếu chưa đạt max attempts
       if (_reconnectAttempts < _maxReconnectAttempts) {
         _connectInternal();
@@ -239,17 +310,19 @@ class StompService {
     }
 
     final jsonBody = jsonEncode(body);
-    print('📤 [StompService] Gửi đến $destination: $jsonBody');
+    print("📤 [StompService] JSON body: $jsonBody");
 
     try {
       _stompClient.send(
         destination: destination,
         body: jsonBody,
       );
+      print("✅ [StompService] Message sent successfully");
     } catch (e) {
-      print('❌ [StompService] Lỗi gửi dữ liệu: $e');
+      print("❌ [StompService] Error sending message: $e");
       _handleConnectionError();
     }
+    print("📤 [StompService] ====== END SENDING DATA ======");
   }
 
   /// Ngắt kết nối
@@ -260,7 +333,6 @@ class StompService {
     if (_connected) {
       _stompClient.deactivate();
       _connected = false;
-      print('🔌 [StompService] Ngắt kết nối thủ công');
     }
     
     _isConnecting = false;

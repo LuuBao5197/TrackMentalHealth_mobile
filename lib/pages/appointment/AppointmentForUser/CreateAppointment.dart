@@ -151,11 +151,12 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
                     ),
                     readOnly: true,
                     onTap: () async {
+                      final now = DateTime.now();
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(
+                        initialDate: now,
+                        firstDate: now,
+                        lastDate: now.add(
                           const Duration(days: 365),
                         ),
                       );
@@ -172,14 +173,35 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
                             time.hour,
                             time.minute,
                           );
+                          
+                          // Kiểm tra nếu thời gian được chọn nhỏ hơn thời gian hiện tại
+                          if (selected.isBefore(now)) {
+                            showToast("Cannot select time in the past", "error");
+                            return;
+                          }
+                          
                           timeStartController.text =
                               DateFormat("yyyy-MM-dd'T'HH:mm")
                                   .format(selected);
                         }
                       }
                     },
-                    validator: (v) =>
-                    v == null || v.isEmpty ? "Please select time" : null,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) {
+                        return "Please select time";
+                      }
+                      
+                      try {
+                        final selectedTime = DateTime.parse(v);
+                        if (selectedTime.isBefore(DateTime.now())) {
+                          return "Cannot select time in the past";
+                        }
+                      } catch (e) {
+                        return "Invalid time format";
+                      }
+                      
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
 
@@ -282,4 +304,5 @@ class _CreateAppointmentPageState extends State<CreateAppointment> {
       ),
     );
   }
+
 }
